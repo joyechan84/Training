@@ -5,6 +5,37 @@
   // ---------- User session (nickname-based, no real auth) ----------
   const CURRENT_USER_KEY = "toeic_current_user";
   const KNOWN_USERS_KEY = "toeic_known_users";
+  const PENDING_IMPORT_KEY = "toeic_pending_import";
+
+  // ---------- Sync code (manual cross-device transfer) ----------
+  // This is a static page with no server, so there is no real account
+  // sync. Instead, progress can be encoded into a short text code the
+  // user copies from one device and pastes into another.
+  function encodeProgress(wordbookIdArray, cardIdx) {
+    const payload = { v: 1, wordbookIds: wordbookIdArray, cardIndex: cardIdx };
+    return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  }
+
+  function decodeProgress(code) {
+    const json = decodeURIComponent(escape(atob(code.trim())));
+    const payload = JSON.parse(json);
+    if (!payload || !Array.isArray(payload.wordbookIds)) {
+      throw new Error("invalid sync code");
+    }
+    return payload;
+  }
+
+  function applyImportCode(code, forUser) {
+    const payload = decodeProgress(code);
+    const wbKey = "toeic_u_" + encodeURIComponent(forUser || "guest") + "_wordbook_ids";
+    const ciKey = "toeic_u_" + encodeURIComponent(forUser || "guest") + "_card_index";
+    localStorage.setItem(wbKey, JSON.stringify(payload.wordbookIds));
+    if (Number.isInteger(payload.cardIndex) && VOCAB_DATA.length > 0) {
+      const total = VOCAB_DATA.length;
+      const normalized = ((payload.cardIndex % total) + total) % total;
+      localStorage.setItem(ciKey, String(normalized));
+    }
+  }
 
   function getKnownUsers() {
     try {
@@ -69,6 +100,11 @@
         input.focus();
         return;
       }
+      const syncCodeInput = document.getElementById("login-sync-code");
+      const code = syncCodeInput ? syncCodeInput.value.trim() : "";
+      if (code) {
+        localStorage.setItem(PENDING_IMPORT_KEY, code);
+      }
       loginAs(name);
     });
 
@@ -79,6 +115,16 @@
   appShellEl.hidden = false;
   document.getElementById("current-user-label").textContent = currentUser;
   document.getElementById("switch-user-btn").addEventListener("click", logout);
+
+  const pendingImportCode = localStorage.getItem(PENDING_IMPORT_KEY);
+  if (pendingImportCode) {
+    localStorage.removeItem(PENDING_IMPORT_KEY);
+    try {
+      applyImportCode(pendingImportCode, currentUser);
+    } catch (e) {
+      // 잘못된 코드는 조용히 무시하고 빈 상태로 시작
+    }
+  }
 
   const WORDBOOK_KEY = userKey("wordbook_ids");
   const QUIZ_LENGTH = 10;
@@ -327,6 +373,60 @@
       e.preventDefault();
       cardRevealed = !cardRevealed;
       renderFlashcard();
+    }
+  });
+
+  // ---------- Sync modal (기기 간 동기화) ----------
+  const syncModalEl = document.getElementById("sync-modal");
+  const syncExportCodeEl = document.getElementById("sync-export-code");
+  const syncImportInputEl = document.getElementById("sync-import-input");
+  const syncMessageEl = document.getElementById("sync-message");
+
+  function showSyncMessage(text, kind) {
+    syncMessageEl.textContent = text;
+    syncMessageEl.className = "sync-message" + (kind ? " " + kind : "");
+  }
+
+  document.getElementById("sync-btn").addEventListener("click", () => {
+    syncExportCodeEl.value = encodeProgress(Array.from(wordbookIds), cardIndex);
+    syncImportInputEl.value = "";
+    showSyncMessage("", "");
+    syncModalEl.hidden = false;
+  });
+
+  document.getElementById("sync-close-btn").addEventListener("click", () => {
+    syncModalEl.hidden = true;
+  });
+
+  document.getElementById("sync-copy-btn").addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(syncExportCodeEl.value);
+      showSyncMessage("코드가 복사되었어요.", "success");
+    } catch (e) {
+      syncExportCodeEl.select();
+      document.execCommand("copy");
+      showSyncMessage("코드가 복사되었어요.", "success");
+    }
+  });
+
+  document.getElementById("sync-import-btn").addEventListener("click", () => {
+    const code = syncImportInputEl.value.trim();
+    if (!code) {
+      showSyncMessage("코드를 붙여넣어 주세요.", "error");
+      return;
+    }
+    try {
+      applyImportCode(code, currentUser);
+      wordbookIds = loadWordbookIds();
+      cardIndex = loadCardIndex();
+      cardRevealed = false;
+      renderFlashcard();
+      renderWordList(searchInput.value);
+      renderWordbookView();
+      updateWordbookSourceCount();
+      showSyncMessage("가져왔어요! 단어장과 학습 진도가 반영되었어요.", "success");
+    } catch (e) {
+      showSyncMessage("코드가 올바르지 않아요. 다시 확인해 주세요.", "error");
     }
   });
 

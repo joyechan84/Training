@@ -171,7 +171,8 @@ body {
   color: var(--ink-muted);
 }
 
-#switch-user-btn {
+#switch-user-btn,
+#sync-btn {
   border: 1px solid var(--line);
   background: var(--card-alt);
   color: var(--ink-muted);
@@ -183,7 +184,82 @@ body {
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-#switch-user-btn:hover { border-color: var(--accent); color: var(--accent-ink); }
+#switch-user-btn:hover,
+#sync-btn:hover { border-color: var(--accent); color: var(--accent-ink); }
+
+/* ===== Sync (기기 간 동기화) ===== */
+.sync-import-block {
+  border-top: 1px dashed var(--line);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sync-textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-alt);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.sync-textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 24, 26, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 20;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 420px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-card h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.modal-divider {
+  border-top: 1px dashed var(--line);
+  margin: 6px 0;
+}
+
+.sync-message {
+  margin: 0;
+  font-size: 0.85rem;
+  min-height: 1.2em;
+}
+
+.sync-message.success { color: var(--success); }
+.sync-message.error { color: var(--danger); }
 
 /* ===== Masthead ===== */
 .app-header {

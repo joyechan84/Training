@@ -22,6 +22,10 @@
         <span class="known-users-label">최근 사용자</span>
         <div id="known-users-list" class="known-users-list"></div>
       </div>
+      <div class="sync-import-block">
+        <label class="known-users-label" for="login-sync-code">다른 기기에서 받은 동기화 코드 (선택)</label>
+        <textarea id="login-sync-code" class="sync-textarea" rows="2" placeholder="코드를 붙여넣으면 학습 기록을 그대로 가져와요"></textarea>
+      </div>
     </form>
   </div>
 
@@ -32,6 +36,7 @@
         <h1>토익 단어장</h1>
         <div class="user-chip">
           <span id="current-user-label"></span>
+          <button id="sync-btn" type="button">동기화</button>
           <button id="switch-user-btn" type="button">전환</button>
         </div>
       </div>
@@ -93,6 +98,27 @@
       <p id="wordbook-empty" class="empty-msg" hidden>아직 등록된 단어가 없어요. '예문보기'에서 모르는 단어를 추가해보세요!</p>
     </section>
     </main>
+  </div>
+
+  <!-- 기기 간 동기화 -->
+  <div id="sync-modal" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <h2>기기 간 동기화</h2>
+      <p class="login-caption">아래 코드를 복사해서 다른 기기의 로그인 화면에 붙여넣으면 단어장과 학습 진도가 그대로 옮겨져요.</p>
+
+      <label class="known-users-label" for="sync-export-code">내 코드</label>
+      <textarea id="sync-export-code" class="sync-textarea" rows="3" readonly></textarea>
+      <button id="sync-copy-btn" class="nav-btn" type="button">코드 복사하기</button>
+
+      <div class="modal-divider"></div>
+
+      <label class="known-users-label" for="sync-import-input">다른 코드 가져오기</label>
+      <textarea id="sync-import-input" class="sync-textarea" rows="3" placeholder="코드를 붙여넣으세요"></textarea>
+      <button id="sync-import-btn" class="primary-btn" type="button">가져오기</button>
+
+      <p id="sync-message" class="sync-message"></p>
+      <button id="sync-close-btn" class="nav-btn" type="button">닫기</button>
+    </div>
   </div>
 
   <script src="js/data.js"></script>
