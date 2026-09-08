@@ -53,6 +53,19 @@
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 
+  // Builds a regex that matches a word's base form plus common inflections
+  // (plurals, -s/-es/-d/-ed/-ing, consonant doubling, y->ies) so the blank
+  // in the fill-in-the-blank quiz lines up even when the example sentence
+  // uses an inflected form of the target word.
+  function buildWordBlankRegex(word) {
+    const hasSpace = /\s/.test(word);
+    if (hasSpace) {
+      return new RegExp("\\b" + escapeRegExp(word) + "\\b", "i");
+    }
+    const stem = /[ey]$/i.test(word) ? word.slice(0, -1) : word;
+    return new RegExp("\\b" + escapeRegExp(stem) + "\\w*", "i");
+  }
+
   function el(tag, className, text) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -210,7 +223,7 @@
       );
       quizAreaEl.appendChild(progress);
 
-      const regex = new RegExp("\\b" + escapeRegExp(word.word) + "\\b", "i");
+      const regex = buildWordBlankRegex(word.word);
       const blanked = word.example.replace(regex, '<span class="blank">_____</span>');
       const sentenceEl = el("div", "quiz-sentence");
       sentenceEl.innerHTML = blanked;
