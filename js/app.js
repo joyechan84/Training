@@ -85,6 +85,7 @@
       views.forEach((v) => v.classList.toggle("active", v.id === "view-" + target));
       if (target === "wordbook") renderWordbookView();
       if (target === "quiz") updateWordbookSourceCount();
+      if (target === "cards") renderFlashcard();
     });
   });
 
@@ -170,6 +171,86 @@
   function updateWordbookSourceCount() {
     document.getElementById("wordbook-source-count").textContent = wordbookIds.size;
   }
+
+  // ---------- Flashcard (단어학습) view ----------
+  const CARD_INDEX_KEY = "toeic_card_index";
+  const flashcardEl = document.getElementById("flashcard");
+  const cardPositionEl = document.getElementById("card-position");
+  const cardPrevBtn = document.getElementById("card-prev");
+  const cardNextBtn = document.getElementById("card-next");
+  const cardBookmarkBtn = document.getElementById("card-bookmark");
+
+  function loadCardIndex() {
+    const saved = parseInt(localStorage.getItem(CARD_INDEX_KEY), 10);
+    return Number.isInteger(saved) && saved >= 0 && saved < VOCAB_DATA.length ? saved : 0;
+  }
+
+  let cardIndex = loadCardIndex();
+  let cardRevealed = false;
+
+  function renderFlashcard() {
+    const word = VOCAB_DATA[cardIndex];
+    flashcardEl.innerHTML = "";
+    flashcardEl.classList.toggle("revealed", cardRevealed);
+
+    if (!cardRevealed) {
+      flashcardEl.appendChild(el("div", "fc-word", word.word));
+      flashcardEl.appendChild(el("span", "fc-pos", word.pos));
+      flashcardEl.appendChild(el("div", "fc-hint", "클릭하거나 Space를 눌러 뜻과 예문 보기"));
+    } else {
+      const top = el("div", "word-card-top");
+      const titleWrap = el("div");
+      titleWrap.appendChild(el("span", "fc-word", word.word));
+      titleWrap.appendChild(el("span", "fc-pos", word.pos));
+      top.appendChild(titleWrap);
+      flashcardEl.appendChild(top);
+      flashcardEl.appendChild(el("div", "fc-meaning", word.meaning));
+      flashcardEl.appendChild(el("div", "fc-example", word.example));
+      flashcardEl.appendChild(el("div", "fc-example-ko", word.exampleKo));
+    }
+
+    cardPositionEl.textContent = `${cardIndex + 1} / ${VOCAB_DATA.length}`;
+    const bookmarked = isBookmarked(word.id);
+    cardBookmarkBtn.textContent = bookmarked ? "★ 모르는 단어" : "☆ 모르는 단어";
+    cardBookmarkBtn.classList.toggle("active", bookmarked);
+  }
+
+  function goToCard(newIndex) {
+    const total = VOCAB_DATA.length;
+    cardIndex = ((newIndex % total) + total) % total;
+    cardRevealed = false;
+    localStorage.setItem(CARD_INDEX_KEY, String(cardIndex));
+    renderFlashcard();
+  }
+
+  flashcardEl.addEventListener("click", () => {
+    cardRevealed = !cardRevealed;
+    renderFlashcard();
+  });
+
+  cardPrevBtn.addEventListener("click", () => goToCard(cardIndex - 1));
+  cardNextBtn.addEventListener("click", () => goToCard(cardIndex + 1));
+
+  cardBookmarkBtn.addEventListener("click", () => {
+    toggleBookmark(VOCAB_DATA[cardIndex].id);
+    renderFlashcard();
+    updateWordbookSourceCount();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (!document.getElementById("view-cards").classList.contains("active")) return;
+    if (e.key === "ArrowRight") {
+      e.preventDefault();
+      goToCard(cardIndex + 1);
+    } else if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      goToCard(cardIndex - 1);
+    } else if (e.key === " ") {
+      e.preventDefault();
+      cardRevealed = !cardRevealed;
+      renderFlashcard();
+    }
+  });
 
   // ---------- Quiz (단어퀴즈) view ----------
   let currentQuizMode = "fill";
@@ -397,6 +478,7 @@
   }
 
   // ---------- Init ----------
+  renderFlashcard();
   renderWordList("");
   updateWordbookSourceCount();
 })();

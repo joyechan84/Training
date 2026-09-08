@@ -16,15 +16,30 @@
       <h1>토익 단어장</h1>
     </div>
     <nav class="tabs">
-      <button class="tab-btn active" data-view="study">예문보기</button>
+      <button class="tab-btn active" data-view="cards">단어학습</button>
+      <button class="tab-btn" data-view="study">예문보기</button>
       <button class="tab-btn" data-view="quiz">단어퀴즈</button>
       <button class="tab-btn" data-view="wordbook">나만의 단어장</button>
     </nav>
   </header>
 
   <main>
+    <!-- 단어학습 (플래시카드) -->
+    <section id="view-cards" class="view active">
+      <div class="toolbar">
+        <span id="card-position" class="count-badge"></span>
+        <span class="hint-text">카드를 클릭하면 뜻과 예문이 보여요 · ← → 키로 이동</span>
+      </div>
+      <div id="flashcard" class="flashcard" tabindex="0"></div>
+      <div class="card-nav">
+        <button id="card-prev" class="nav-btn">◀ 이전</button>
+        <button id="card-bookmark" class="bookmark-btn"></button>
+        <button id="card-next" class="nav-btn">다음 ▶</button>
+      </div>
+    </section>
+
     <!-- 예문보기 -->
-    <section id="view-study" class="view active">
+    <section id="view-study" class="view">
       <div class="toolbar">
         <input type="text" id="search-input" placeholder="단어 검색..." />
         <span id="study-count" class="count-badge"></span>
