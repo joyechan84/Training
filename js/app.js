@@ -2,7 +2,85 @@
 (function () {
   "use strict";
 
-  const WORDBOOK_KEY = "toeic_wordbook_ids";
+  // ---------- User session (nickname-based, no real auth) ----------
+  const CURRENT_USER_KEY = "toeic_current_user";
+  const KNOWN_USERS_KEY = "toeic_known_users";
+
+  function getKnownUsers() {
+    try {
+      return JSON.parse(localStorage.getItem(KNOWN_USERS_KEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function rememberUser(name) {
+    const list = getKnownUsers();
+    if (!list.includes(name)) {
+      list.push(name);
+      localStorage.setItem(KNOWN_USERS_KEY, JSON.stringify(list));
+    }
+  }
+
+  function loginAs(name) {
+    localStorage.setItem(CURRENT_USER_KEY, name);
+    rememberUser(name);
+    location.reload();
+  }
+
+  function logout() {
+    localStorage.removeItem(CURRENT_USER_KEY);
+    location.reload();
+  }
+
+  const currentUser = localStorage.getItem(CURRENT_USER_KEY);
+
+  function userKey(base) {
+    return "toeic_u_" + encodeURIComponent(currentUser || "guest") + "_" + base;
+  }
+
+  const loginGateEl = document.getElementById("login-gate");
+  const appShellEl = document.getElementById("app-shell");
+
+  if (!currentUser) {
+    loginGateEl.hidden = false;
+    appShellEl.hidden = true;
+
+    const knownUsers = getKnownUsers();
+    if (knownUsers.length > 0) {
+      const knownUsersWrapEl = document.getElementById("known-users");
+      const knownUsersListEl = document.getElementById("known-users-list");
+      knownUsersWrapEl.hidden = false;
+      knownUsers.forEach((name) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "known-user-btn";
+        btn.textContent = name;
+        btn.addEventListener("click", () => loginAs(name));
+        knownUsersListEl.appendChild(btn);
+      });
+    }
+
+    document.getElementById("login-form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const input = document.getElementById("login-nickname");
+      const name = input.value.trim();
+      if (!name) {
+        input.focus();
+        return;
+      }
+      loginAs(name);
+    });
+
+    return; // 로그인 전에는 나머지 앱 로직을 실행하지 않음
+  }
+
+  loginGateEl.hidden = true;
+  appShellEl.hidden = false;
+  document.getElementById("current-user-label").textContent = currentUser;
+  document.getElementById("switch-user-btn").addEventListener("click", logout);
+
+  const WORDBOOK_KEY = userKey("wordbook_ids");
   const QUIZ_LENGTH = 10;
   const MATCH_PAIR_COUNT = 6;
 
@@ -173,7 +251,7 @@
   }
 
   // ---------- Flashcard (단어학습) view ----------
-  const CARD_INDEX_KEY = "toeic_card_index";
+  const CARD_INDEX_KEY = userKey("card_index");
   const flashcardEl = document.getElementById("flashcard");
   const cardPositionEl = document.getElementById("card-position");
   const cardPrevBtn = document.getElementById("card-prev");

@@ -10,20 +10,40 @@
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-  <header class="app-header">
-    <div class="masthead">
+  <!-- 로그인 게이트 -->
+  <div id="login-gate" class="login-gate">
+    <form id="login-form" class="login-card">
       <span class="eyebrow">Vocabulary Notebook</span>
-      <h1>토익 단어장</h1>
-    </div>
-    <nav class="tabs">
-      <button class="tab-btn active" data-view="cards">단어학습</button>
-      <button class="tab-btn" data-view="study">예문보기</button>
-      <button class="tab-btn" data-view="quiz">단어퀴즈</button>
-      <button class="tab-btn" data-view="wordbook">나만의 단어장</button>
-    </nav>
-  </header>
+      <h1>누구의 단어장인가요?</h1>
+      <p class="login-caption">이름을 입력하면 학습 기록이 그 이름으로 저장돼요. 비밀번호 없이 이 브라우저에서만 구분됩니다.</p>
+      <input type="text" id="login-nickname" placeholder="이름 또는 닉네임" maxlength="20" autocomplete="off" />
+      <button type="submit" class="primary-btn">시작하기</button>
+      <div id="known-users" class="known-users" hidden>
+        <span class="known-users-label">최근 사용자</span>
+        <div id="known-users-list" class="known-users-list"></div>
+      </div>
+    </form>
+  </div>
 
-  <main>
+  <div id="app-shell" hidden>
+    <header class="app-header">
+      <div class="masthead">
+        <span class="eyebrow">Vocabulary Notebook</span>
+        <h1>토익 단어장</h1>
+        <div class="user-chip">
+          <span id="current-user-label"></span>
+          <button id="switch-user-btn" type="button">전환</button>
+        </div>
+      </div>
+      <nav class="tabs">
+        <button class="tab-btn active" data-view="cards">단어학습</button>
+        <button class="tab-btn" data-view="study">예문보기</button>
+        <button class="tab-btn" data-view="quiz">단어퀴즈</button>
+        <button class="tab-btn" data-view="wordbook">나만의 단어장</button>
+      </nav>
+    </header>
+
+    <main>
     <!-- 단어학습 (플래시카드) -->
     <section id="view-cards" class="view active">
       <div class="toolbar">
@@ -72,7 +92,8 @@
       <div id="wordbook-list" class="word-list"></div>
       <p id="wordbook-empty" class="empty-msg" hidden>아직 등록된 단어가 없어요. '예문보기'에서 모르는 단어를 추가해보세요!</p>
     </section>
-  </main>
+    </main>
+  </div>
 
   <script src="js/data.js"></script>
   <script src="js/app.js"></script>

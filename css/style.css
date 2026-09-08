@@ -58,6 +58,8 @@
 
 * { box-sizing: border-box; }
 
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -65,6 +67,123 @@ body {
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
 }
+
+/* ===== Login gate ===== */
+.login-gate {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.login-card h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.5rem;
+  text-wrap: balance;
+}
+
+.login-caption {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+
+#login-nickname {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-alt);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+}
+
+#login-nickname:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.known-users {
+  border-top: 1px dashed var(--line);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.known-users-label {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+}
+
+.known-users-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.known-user-btn {
+  border: 1px solid var(--line);
+  background: var(--card-alt);
+  color: var(--ink);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.known-user-btn:hover { border-color: var(--accent); color: var(--accent-ink); }
+
+/* ===== User chip ===== */
+.user-chip {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#current-user-label {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
+
+#switch-user-btn {
+  border: 1px solid var(--line);
+  background: var(--card-alt);
+  color: var(--ink-muted);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+#switch-user-btn:hover { border-color: var(--accent); color: var(--accent-ink); }
 
 /* ===== Masthead ===== */
 .app-header {
@@ -80,7 +199,7 @@ body {
   max-width: 860px;
   margin: 0 auto;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   padding-bottom: 14px;
 }
