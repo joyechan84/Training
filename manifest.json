@@ -1,0 +1,16 @@
+{
+  "name": "토익 단어장",
+  "short_name": "토익 단어장",
+  "description": "예문 보기, 단어학습 카드, 빈칸 채우기·짝짓기 퀴즈, 나만의 단어장을 갖춘 1,200단어 토익 어휘 학습 앱",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef0ec",
+  "theme_color": "#1e2a2e",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
