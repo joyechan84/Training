@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>스톱워치</title>
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #1e1e2f;
+    font-family: 'Courier New', Courier, monospace;
+  }
+
+  .stopwatch {
+    text-align: center;
+  }
+
+  #display {
+    font-size: 4rem;
+    color: #ffffff;
+    letter-spacing: 4px;
+    margin-bottom: 30px;
+  }
+
+  .buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+  }
+
+  button {
+    padding: 12px 24px;
+    font-size: 1rem;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #ffffff;
+    transition: opacity 0.2s;
+  }
+
+  button:hover {
+    opacity: 0.85;
+  }
+
+  #startBtn {
+    background-color: #4caf50;
+  }
+
+  #stopBtn {
+    background-color: #f44336;
+  }
+
+  #resetBtn {
+    background-color: #757575;
+  }
+</style>
+</head>
+<body>
+
+  <div class="stopwatch">
+    <div id="display">00:00:00</div>
+    <div class="buttons">
+      <button id="startBtn">시작</button>
+      <button id="stopBtn">중지</button>
+      <button id="resetBtn">초기화</button>
+    </div>
+  </div>
+
+  <script>
+    const display = document.getElementById('display');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const resetBtn = document.getElementById('resetBtn');
+
+    let elapsedMs = 0;
+    let intervalId = null;
+    let lastTick = null;
+
+    function formatTime(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      const pad = (num) => String(num).padStart(2, '0');
+      return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+
+    function updateDisplay() {
+      display.textContent = formatTime(elapsedMs);
+    }
+
+    function start() {
+      if (intervalId) return;
+      lastTick = Date.now();
+      intervalId = setInterval(() => {
+        const now = Date.now();
+        elapsedMs += now - lastTick;
+        lastTick = now;
+        updateDisplay();
+      }, 100);
+    }
+
+    function stop() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }
+
+    function reset() {
+      stop();
+      elapsedMs = 0;
+      updateDisplay();
+    }
+
+    startBtn.addEventListener('click', start);
+    stopBtn.addEventListener('click', stop);
+    resetBtn.addEventListener('click', reset);
+  </script>
+
+</body>
+</html>
