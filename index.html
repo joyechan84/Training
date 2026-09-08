@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>토익 단어장</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>📚 토익 단어 암기</h1>
+    <nav class="tabs">
+      <button class="tab-btn active" data-view="study">예문보기</button>
+      <button class="tab-btn" data-view="quiz">단어퀴즈</button>
+      <button class="tab-btn" data-view="wordbook">나만의 단어장</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 예문보기 -->
+    <section id="view-study" class="view active">
+      <div class="toolbar">
+        <input type="text" id="search-input" placeholder="단어 검색..." />
+        <span id="study-count" class="count-badge"></span>
+      </div>
+      <div id="word-list" class="word-list"></div>
+    </section>
+
+    <!-- 단어퀴즈 -->
+    <section id="view-quiz" class="view">
+      <div class="quiz-setup">
+        <div class="quiz-mode-select">
+          <button class="mode-btn active" data-mode="fill">예문에 넣기</button>
+          <button class="mode-btn" data-mode="match">단어-뜻 짝짓기</button>
+        </div>
+        <div class="quiz-source-select">
+          <label><input type="radio" name="quiz-source" value="all" checked /> 전체 단어</label>
+          <label><input type="radio" name="quiz-source" value="wordbook" /> 나만의 단어장 (<span id="wordbook-source-count">0</span>)</label>
+        </div>
+        <button id="start-quiz-btn" class="primary-btn">퀴즈 시작</button>
+      </div>
+      <div id="quiz-area" class="quiz-area"></div>
+    </section>
+
+    <!-- 나만의 단어장 -->
+    <section id="view-wordbook" class="view">
+      <div class="toolbar">
+        <h2>모르는 단어장</h2>
+        <span id="wordbook-count" class="count-badge"></span>
+      </div>
+      <div id="wordbook-list" class="word-list"></div>
+      <p id="wordbook-empty" class="empty-msg" hidden>아직 등록된 단어가 없어요. '예문보기'에서 모르는 단어를 추가해보세요!</p>
+    </section>
+  </main>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
