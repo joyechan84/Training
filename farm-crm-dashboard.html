@@ -3,46 +3,137 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<title>농장 순회 CRM 대시보드</title>
+<title>농장 순회 CRM</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 
 <script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          brand: {
-            50: '#f0faf4',
-            100: '#dcf3e4',
-            200: '#b8e6c9',
-            400: '#4cae6f',
-            500: '#2e8b52',
-            600: '#217041',
-            700: '#1b5a35',
-            800: '#164a2c',
-          },
-        },
-      },
-    },
-  };
-</script>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 
 <style>
-  html, body { background:#f4f8f5; }
-  #root { max-width: 480px; margin: 0 auto; min-height: 100vh; background:#f4f8f5; }
+  /* ---------- Design tokens ---------- */
+  :root {
+    --bg: #eef3ea;
+    --furrow: rgba(31, 92, 61, 0.05);
+    --surface: #ffffff;
+    --surface-2: #eef3ea;
+    --border: #d8e3d3;
+    --ink: #182219;
+    --ink-soft: #5b6b5c;
+    --ink-faint: #8a988a;
+    --brand: #1f5c3d;
+    --brand-strong: #123822;
+    --brand-tint: #dcece1;
+    --accent: #b1812c;
+    --accent-tint: #f3e6c8;
+    --ok: #257a4a;
+    --ok-tint: #dcf0e2;
+    --warn: #a6741f;
+    --warn-tint: #f7ecd2;
+    --danger: #a63a2f;
+    --danger-tint: #f6dfda;
+    --shadow: 24, 38, 26;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1811;
+      --furrow: rgba(111, 190, 140, 0.045);
+      --surface: #172119;
+      --surface-2: #1d2a20;
+      --border: #2b3a2d;
+      --ink: #eaf1e7;
+      --ink-soft: #a2b3a1;
+      --ink-faint: #71826f;
+      --brand: #6fc491;
+      --brand-strong: #8fd6ac;
+      --brand-tint: rgba(111, 196, 145, 0.16);
+      --accent: #e0b85c;
+      --accent-tint: rgba(224, 184, 92, 0.16);
+      --ok: #5cbf85;
+      --ok-tint: rgba(92, 191, 133, 0.16);
+      --warn: #e0ab52;
+      --warn-tint: rgba(224, 171, 82, 0.16);
+      --danger: #e08475;
+      --danger-tint: rgba(224, 132, 117, 0.16);
+      --shadow: 0, 0, 0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1811;
+    --furrow: rgba(111, 190, 140, 0.045);
+    --surface: #172119;
+    --surface-2: #1d2a20;
+    --border: #2b3a2d;
+    --ink: #eaf1e7;
+    --ink-soft: #a2b3a1;
+    --ink-faint: #71826f;
+    --brand: #6fc491;
+    --brand-strong: #8fd6ac;
+    --brand-tint: rgba(111, 196, 145, 0.16);
+    --accent: #e0b85c;
+    --accent-tint: rgba(224, 184, 92, 0.16);
+    --ok: #5cbf85;
+    --ok-tint: rgba(92, 191, 133, 0.16);
+    --warn: #e0ab52;
+    --warn-tint: rgba(224, 171, 82, 0.16);
+    --danger: #e08475;
+    --danger-tint: rgba(224, 132, 117, 0.16);
+    --shadow: 0, 0, 0;
+  }
+
+  html, body { background: var(--bg); }
+  body {
+    font-family: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    color: var(--ink);
+    background-color: var(--bg);
+    background-image: repeating-linear-gradient(115deg, transparent, transparent 25px, var(--furrow) 25px, var(--furrow) 27px);
+  }
+  .font-wordmark { font-family: 'Gowun Batang', Georgia, 'Nanum Myeongjo', serif; }
+  .font-mono { font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace; font-variant-numeric: tabular-nums; }
+  #app-shell {
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(var(--shadow), 0.06), 0 20px 44px -20px rgba(var(--shadow), 0.28);
+    position: relative;
+  }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-thumb { background: #c8ded0; border-radius: 999px; }
-  .chip { -webkit-tap-highlight-color: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  .tap-active { -webkit-tap-highlight-color: transparent; transition: transform .12s ease; }
   .tap-active:active { transform: scale(0.97); }
+  h1, h2, h3 { text-wrap: balance; }
+
+  .field {
+    width: 100%;
+    font-size: 0.875rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .field:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .field-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--ink-soft);
+    margin-bottom: 0.3rem;
+    display: block;
+  }
+
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   .modal-backdrop { animation: fadeIn .18s ease-out; }
   .modal-sheet { animation: slideUp .22s cubic-bezier(.2,.9,.3,1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .modal-backdrop, .modal-sheet { animation: none; }
+    .tap-active, .tap-active:active { transition: none; transform: none; }
+  }
 </style>
 </head>
 <body>
@@ -51,7 +142,7 @@
 <script type="text/babel-source" id="app-source">
 const { useState, useEffect, useRef, useMemo } = React;
 
-/* ------------------------- 더미 데이터 ------------------------- */
+/* ------------------------- 상수 / 유틸 ------------------------- */
 
 const LIVESTOCK = {
   hanwoo: { label: "한우", icon: "🐂" },
@@ -60,127 +151,172 @@ const LIVESTOCK = {
   poultry:{ label: "양계", icon: "🐔" },
 };
 
+// c: 강조색(점/텍스트/스트라이프) 변수명, tint: 배경 변수명
 const STATUS = {
-  normal:  { label: "정상",     dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50",  ring: "ring-emerald-200", bar: "bg-emerald-500" },
-  caution: { label: "관심 필요", dot: "bg-amber-500",   text: "text-amber-700",   bg: "bg-amber-50",    ring: "ring-amber-200",   bar: "bg-amber-500" },
-  danger:  { label: "위험",     dot: "bg-rose-500",    text: "text-rose-700",    bg: "bg-rose-50",     ring: "ring-rose-200",    bar: "bg-rose-500" },
+  normal:  { label: "정상",      c: "--ok",     tint: "--ok-tint" },
+  caution: { label: "관심 필요",  c: "--warn",   tint: "--warn-tint" },
+  danger:  { label: "위험",      c: "--danger", tint: "--danger-tint" },
 };
 
-const FARMS = [
-  {
-    id: 1,
-    name: "한라농장",
-    livestock: "hanwoo",
-    lastVisitDays: 3,
-    todayVisit: true,
-    status: "normal",
-    owner: "김한라",
-    phone: "010-1234-5678",
-    product: "한우비육사료 A+",
-    orders: [120, 135, 140],
-    note: "특이사항 없음. 사료 급여 상태 안정적으로 유지되고 있음.",
-  },
-  {
-    id: 2,
-    name: "대박목장",
-    livestock: "dairy",
-    lastVisitDays: 20,
-    todayVisit: false,
-    status: "danger",
-    owner: "이대박",
-    phone: "010-2345-6789",
-    product: "낙농고급배합사료",
-    orders: [95, 80, 55],
-    note: "최근 원유 생산량 감소 추세. 미수금 240만원 발생, 긴급 방문 필요.",
-  },
-  {
-    id: 3,
-    name: "초록낙농",
-    livestock: "dairy",
-    lastVisitDays: 5,
-    todayVisit: true,
-    status: "normal",
-    owner: "박초록",
-    phone: "010-3456-7890",
-    product: "낙농 TMR 사료",
-    orders: [110, 115, 118],
-    note: "우유 생산량 안정적. 추가 발주 문의 있음.",
-  },
-  {
-    id: 4,
-    name: "튼튼양돈장",
-    livestock: "pig",
-    lastVisitDays: 12,
-    todayVisit: false,
-    status: "caution",
-    owner: "최튼튼",
-    phone: "010-4567-8901",
-    product: "양돈비육사료 프리미엄",
-    orders: [200, 190, 165],
-    note: "최근 폭염으로 인한 돼지 섭취량 저하 호소. 사양관리 상담 필요.",
-  },
-  {
-    id: 5,
-    name: "자유양계장",
-    livestock: "poultry",
-    lastVisitDays: 8,
-    todayVisit: true,
-    status: "normal",
-    owner: "정자유",
-    phone: "010-5678-9012",
-    product: "산란계 배합사료",
-    orders: [75, 78, 80],
-    note: "산란율 우수, 거래 만족도 높음.",
-  },
-  {
-    id: 6,
-    name: "황금한우목장",
-    livestock: "hanwoo",
-    lastVisitDays: 25,
-    todayVisit: false,
-    status: "danger",
-    owner: "서황금",
-    phone: "010-6789-0123",
-    product: "한우육성사료",
-    orders: [130, 100, 70],
-    note: "타 브랜드 사료 견적 문의 확인됨. 이탈 우려로 긴급 대응 필요.",
-  },
-];
+const MONTH_TAG_LABELS = ["전전월", "전월", "이번달"];
 
-const MONTH_LABELS = ["7월", "8월", "9월"];
-const MONTHLY_TARGET = "1,240톤";
-const TARGET_RATE = 85;
+const STORAGE_KEYS = {
+  farms: "farmCrm.farms.v1",
+  clientId: "farmCrm.naverClientId.v1",
+  profile: "farmCrm.profile.v1",
+};
+
+const cssVar = (name) => `var(${name})`;
+
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const then = new Date(y, m - 1, d).getTime();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((today - then) / 86400000);
+}
+
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+function saveJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) { /* 저장 공간이 없거나 접근이 막힌 경우 조용히 무시 */ }
+}
+
+/* ---------------- 네이버 지도 로더 / 지오코딩 ---------------- */
+
+function ensureNaverMaps(clientId) {
+  if (!clientId) return Promise.reject(new Error("NO_KEY"));
+  if (window.naver && window.naver.maps && window.naver.maps.Service) return Promise.resolve(window.naver.maps);
+  if (window.__naverMapsPromise && window.__naverMapsClientId === clientId) return window.__naverMapsPromise;
+
+  window.__naverMapsClientId = clientId;
+  window.__naverMapsPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=" + encodeURIComponent(clientId) + "&submodules=geocoder";
+    script.onload = () => {
+      if (window.naver && window.naver.maps) resolve(window.naver.maps);
+      else reject(new Error("SCRIPT_LOAD_FAILED"));
+    };
+    script.onerror = () => reject(new Error("SCRIPT_LOAD_FAILED"));
+    document.head.appendChild(script);
+  });
+  return window.__naverMapsPromise;
+}
+
+function geocodeAddress(address) {
+  return new Promise((resolve) => {
+    if (!window.naver || !window.naver.maps || !window.naver.maps.Service) { resolve(null); return; }
+    window.naver.maps.Service.geocode({ query: address }, (status, response) => {
+      if (status !== window.naver.maps.Service.Status.OK) { resolve(null); return; }
+      const list = response.v2 && response.v2.addresses;
+      if (!list || list.length === 0) { resolve(null); return; }
+      const item = list[0];
+      resolve({
+        lat: parseFloat(item.y),
+        lng: parseFloat(item.x),
+        formatted: item.roadAddress || item.jibunAddress || address,
+      });
+    });
+  });
+}
 
 /* ------------------------- 서브 컴포넌트 ------------------------- */
 
-function Header() {
-  const todayCount = FARMS.filter(f => f.todayVisit).length;
+function StatusChip({ status }) {
+  const s = STATUS[status];
   return (
-    <header className="bg-brand-600 text-white px-4 pt-6 pb-8 rounded-b-3xl shadow-lg shadow-brand-800/20">
+    <span
+      className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full"
+      style={{ background: cssVar(s.tint), color: cssVar(s.c) }}
+    >
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: cssVar(s.c) }}></span>
+      {s.label}
+    </span>
+  );
+}
+
+function Header({ profile, todayCount, onOpenSettings }) {
+  const initial = profile.name ? profile.name.slice(-1) : "👤";
+  return (
+    <header
+      className="text-white px-5 pt-7 pb-8 rounded-b-[28px]"
+      style={{ background: `linear-gradient(160deg, var(--brand-strong), var(--brand))` }}
+    >
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-brand-100 text-xs font-medium tracking-wide">영업 담당구역 · 남부권역</p>
-          <h1 className="text-xl font-bold mt-0.5">🌾 농장 순회 CRM</h1>
+          <p className="text-[11px] font-medium tracking-wide text-white/70">
+            {profile.region ? profile.region : "담당 구역 미설정 · 설정에서 입력"}
+          </p>
+          <h1 className="font-wordmark text-2xl font-bold mt-1">농장 순회 CRM</h1>
         </div>
-        <div className="w-11 h-11 rounded-full bg-brand-500/60 flex items-center justify-center text-lg font-semibold ring-2 ring-white/30">
-          박
-        </div>
+        <button
+          onClick={onOpenSettings}
+          className="tap-active w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-base font-semibold ring-1 ring-white/25"
+          aria-label="설정"
+        >
+          {initial}
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mt-5">
-        <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5">
-          <p className="text-[11px] text-brand-100 font-medium">오늘 방문 예정</p>
-          <p className="text-2xl font-bold mt-1 leading-none">{todayCount}<span className="text-sm font-semibold ml-1">곳</span></p>
+      <div className="grid grid-cols-2 gap-3 mt-6">
+        <div className="bg-white/10 rounded-2xl p-4">
+          <p className="text-[11px] text-white/70 font-medium tracking-wide">오늘 방문 예정</p>
+          <p className="font-mono text-[28px] font-semibold mt-1.5 leading-none">
+            {todayCount}<span className="text-sm font-medium ml-1 text-white/80">곳</span>
+          </p>
         </div>
-        <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5">
-          <p className="text-[11px] text-brand-100 font-medium">이번 달 목표 달성률</p>
-          <p className="text-2xl font-bold mt-1 leading-none">{TARGET_RATE}<span className="text-sm font-semibold ml-1">%</span></p>
-          <div className="w-full h-1.5 bg-white/20 rounded-full mt-2 overflow-hidden">
-            <div className="h-full bg-white rounded-full" style={{ width: TARGET_RATE + "%" }} />
+        <div className="bg-white/10 rounded-2xl p-4">
+          <p className="text-[11px] text-white/70 font-medium tracking-wide">이번 달 목표 달성률</p>
+          <p className="font-mono text-[28px] font-semibold mt-1.5 leading-none">
+            {profile.targetRate}<span className="text-sm font-medium ml-1 text-white/80">%</span>
+          </p>
+          <div className="w-full h-1.5 bg-white/20 rounded-full mt-2.5 overflow-hidden">
+            <div className="h-full bg-white rounded-full" style={{ width: Math.min(100, Math.max(0, profile.targetRate)) + "%" }} />
           </div>
         </div>
       </div>
     </header>
+  );
+}
+
+function ViewToggle({ view, setView }) {
+  const items = [
+    { key: "list", label: "목록" },
+    { key: "map", label: "지도" },
+  ];
+  return (
+    <div className="flex gap-2 px-5 mt-5">
+      {items.map(it => {
+        const active = view === it.key;
+        return (
+          <button
+            key={it.key}
+            onClick={() => setView(it.key)}
+            className="tap-active flex-1 py-2.5 rounded-xl text-sm font-semibold border"
+            style={active
+              ? { background: cssVar("--brand"), borderColor: cssVar("--brand"), color: "#fff" }
+              : { background: cssVar("--surface"), borderColor: cssVar("--border"), color: cssVar("--ink-soft") }}
+          >
+            {it.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -190,46 +326,50 @@ function FilterBar({ statusFilter, setStatusFilter, livestockFilter, setLivestoc
     { key: "risk", label: "⚠ 위험·관심만" },
   ];
   return (
-    <div className="px-4 mt-4 space-y-2.5">
+    <div className="px-5 mt-3 space-y-2.5">
       <div className="flex gap-2">
-        {statusChips.map(c => (
-          <button
-            key={c.key}
-            onClick={() => setStatusFilter(c.key)}
-            className={
-              "chip tap-active flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors " +
-              (statusFilter === c.key
-                ? "bg-brand-600 border-brand-600 text-white shadow-md shadow-brand-600/20"
-                : "bg-white border-brand-100 text-brand-700")
-            }
-          >
-            {c.label}
-          </button>
-        ))}
+        {statusChips.map(c => {
+          const active = statusFilter === c.key;
+          return (
+            <button
+              key={c.key}
+              onClick={() => setStatusFilter(c.key)}
+              className="tap-active flex-1 py-2 rounded-xl text-xs font-semibold border"
+              style={active
+                ? { background: cssVar("--brand-tint"), borderColor: cssVar("--brand"), color: cssVar("--brand") }
+                : { background: cssVar("--surface"), borderColor: cssVar("--border"), color: cssVar("--ink-soft") }}
+            >
+              {c.label}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-5 px-5">
         <button
           onClick={() => setLivestockFilter("all")}
-          className={
-            "chip tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border " +
-            (livestockFilter === "all" ? "bg-brand-100 border-brand-300 text-brand-800" : "bg-white border-gray-200 text-gray-500")
-          }
+          className="tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border"
+          style={livestockFilter === "all"
+            ? { background: cssVar("--brand-tint"), borderColor: cssVar("--brand"), color: cssVar("--brand") }
+            : { background: cssVar("--surface"), borderColor: cssVar("--border"), color: cssVar("--ink-faint") }}
         >
           축종 전체
         </button>
-        {Object.entries(LIVESTOCK).map(([key, v]) => (
-          <button
-            key={key}
-            onClick={() => setLivestockFilter(key)}
-            className={
-              "chip tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border flex items-center gap-1 " +
-              (livestockFilter === key ? "bg-brand-100 border-brand-300 text-brand-800" : "bg-white border-gray-200 text-gray-500")
-            }
-          >
-            <span>{v.icon}</span>{v.label}
-          </button>
-        ))}
+        {Object.entries(LIVESTOCK).map(([key, v]) => {
+          const active = livestockFilter === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setLivestockFilter(key)}
+              className="tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border flex items-center gap-1"
+              style={active
+                ? { background: cssVar("--brand-tint"), borderColor: cssVar("--brand"), color: cssVar("--brand") }
+                : { background: cssVar("--surface"), borderColor: cssVar("--border"), color: cssVar("--ink-faint") }}
+            >
+              <span>{v.icon}</span>{v.label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -238,34 +378,43 @@ function FilterBar({ statusFilter, setStatusFilter, livestockFilter, setLivestoc
 function FarmCard({ farm, onClick }) {
   const s = STATUS[farm.status];
   const l = LIVESTOCK[farm.livestock];
+  const dSince = daysSince(farm.lastVisitDate);
   return (
     <button
       onClick={onClick}
-      className={
-        "tap-active w-full text-left bg-white rounded-2xl p-4 shadow-sm shadow-gray-200 ring-1 " + s.ring +
-        " flex items-center gap-3 transition-transform"
-      }
+      className="tap-active w-full text-left rounded-2xl pl-4 pr-3.5 py-4 flex items-center gap-3 border-l-4"
+      style={{
+        background: cssVar("--surface"),
+        borderColor: cssVar("--border"),
+        borderLeftColor: cssVar(s.c),
+        boxShadow: `0 1px 2px rgba(var(--shadow), 0.04), 0 8px 20px -14px rgba(var(--shadow), 0.35)`,
+        borderTopWidth: "1px", borderRightWidth: "1px", borderBottomWidth: "1px",
+      }}
     >
-      <div className={"w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 " + s.bg}>
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{ background: cssVar("--surface-2") }}>
         {l.icon}
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <h3 className="font-bold text-gray-800 truncate">{farm.name}</h3>
-          {farm.todayVisit && (
-            <span className="shrink-0 text-[10px] font-bold text-brand-700 bg-brand-100 px-1.5 py-0.5 rounded-md">오늘 방문</span>
+          <h3 className="font-bold truncate">{farm.name}</h3>
+          {farm.nextVisitDate === todayStr() && (
+            <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md tracking-wide" style={{ background: cssVar("--accent-tint"), color: cssVar("--accent") }}>
+              오늘 방문
+            </span>
           )}
         </div>
-        <p className="text-xs text-gray-400 mt-0.5">{l.label} · 마지막 방문 D-{farm.lastVisitDays}</p>
+        <p className="text-xs mt-0.5 font-mono truncate" style={{ color: cssVar("--ink-faint") }}>
+          {l.label} · {dSince === null ? "방문 기록 없음" : `마지막 방문 D-${dSince}`}
+        </p>
+        {farm.address && (
+          <p className="text-[11px] mt-0.5 truncate" style={{ color: cssVar("--ink-faint") }}>📍 {farm.address}</p>
+        )}
       </div>
 
-      <div className="flex flex-col items-end gap-1 shrink-0">
-        <span className={"flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full " + s.bg + " " + s.text}>
-          <span className={"w-1.5 h-1.5 rounded-full " + s.dot}></span>
-          {s.label}
-        </span>
-        <span className="text-gray-300 text-lg leading-none">›</span>
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <StatusChip status={farm.status} />
+        <span style={{ color: cssVar("--ink-faint") }} className="text-lg leading-none">›</span>
       </div>
     </button>
   );
@@ -274,109 +423,376 @@ function FarmCard({ farm, onClick }) {
 function OrderChart({ orders }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
+  const hasData = orders.some(v => v > 0);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!hasData || !canvasRef.current) return;
     if (chartRef.current) chartRef.current.destroy();
+
+    const style = getComputedStyle(document.documentElement);
+    const brand = style.getPropertyValue("--brand").trim();
+    const ink = style.getPropertyValue("--ink-soft").trim();
+    const grid = style.getPropertyValue("--border").trim();
 
     chartRef.current = new Chart(canvasRef.current, {
       type: "bar",
       data: {
-        labels: MONTH_LABELS,
-        datasets: [{
-          label: "주문량 (톤)",
-          data: orders,
-          backgroundColor: "#2e8b52",
-          borderRadius: 8,
-          maxBarThickness: 42,
-        }],
+        labels: MONTH_TAG_LABELS,
+        datasets: [{ label: "주문량 (톤)", data: orders, backgroundColor: brand, borderRadius: 8, maxBarThickness: 44 }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          y: { beginAtZero: true, grid: { color: "#eef3ee" }, ticks: { color: "#8a9a8f", font: { size: 11 } } },
-          x: { grid: { display: false }, ticks: { color: "#4a5a4f", font: { size: 12, weight: "600" } } },
+          y: { beginAtZero: true, grid: { color: grid }, ticks: { color: ink, font: { size: 11, family: "'IBM Plex Mono', monospace" } } },
+          x: { grid: { display: false }, ticks: { color: ink, font: { size: 12, weight: "600", family: "'IBM Plex Sans KR', sans-serif" } } },
         },
       },
     });
 
     return () => { if (chartRef.current) chartRef.current.destroy(); };
-  }, [orders]);
+  }, [orders, hasData]);
 
+  if (!hasData) {
+    return (
+      <p className="text-xs py-8 text-center" style={{ color: cssVar("--ink-faint") }}>
+        최근 주문 데이터가 없습니다.
+      </p>
+    );
+  }
   return <div className="h-40 mt-2"><canvas ref={canvasRef}></canvas></div>;
 }
 
-function FarmDetailModal({ farm, onClose }) {
-  const [memo, setMemo] = useState(farm.note);
-  const [saved, setSaved] = useState(false);
-  const s = STATUS[farm.status];
-  const l = LIVESTOCK[farm.livestock];
+/* ---------------- 지도 뷰 ---------------- */
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
+function NaverMapView({ farms, clientId, onSelect }) {
+  const mapDivRef = useRef(null);
+  const mapObjRef = useRef(null);
+  const markersRef = useRef([]);
+  const [mapState, setMapState] = useState(clientId ? "loading" : "no-key");
+
+  useEffect(() => {
+    if (!clientId) { setMapState("no-key"); return; }
+    let cancelled = false;
+    setMapState("loading");
+    ensureNaverMaps(clientId)
+      .then((maps) => {
+        if (cancelled || !mapDivRef.current) return;
+        mapObjRef.current = new maps.Map(mapDivRef.current, {
+          center: new maps.LatLng(36.5, 127.8),
+          zoom: 7,
+        });
+        setMapState("ready");
+      })
+      .catch(() => { if (!cancelled) setMapState("error"); });
+    return () => { cancelled = true; };
+  }, [clientId]);
+
+  useEffect(() => {
+    if (mapState !== "ready" || !window.naver || !mapObjRef.current) return;
+    const maps = window.naver.maps;
+
+    markersRef.current.forEach(m => m.setMap(null));
+    markersRef.current = [];
+
+    const located = farms.filter(f => typeof f.lat === "number" && typeof f.lng === "number");
+    const style = getComputedStyle(document.documentElement);
+
+    located.forEach(farm => {
+      const color = style.getPropertyValue(STATUS[farm.status].c).trim();
+      const marker = new maps.Marker({
+        position: new maps.LatLng(farm.lat, farm.lng),
+        map: mapObjRef.current,
+        icon: {
+          content: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+          anchor: new maps.Point(8, 8),
+        },
+        title: farm.name,
+      });
+      maps.Event.addListener(marker, "click", () => onSelect(farm));
+      markersRef.current.push(marker);
+    });
+
+    if (located.length > 0) {
+      const bounds = new maps.LatLngBounds(new maps.LatLng(located[0].lat, located[0].lng), new maps.LatLng(located[0].lat, located[0].lng));
+      located.forEach(f => bounds.extend(new maps.LatLng(f.lat, f.lng)));
+      mapObjRef.current.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+    }
+  }, [farms, mapState]);
+
+  if (mapState === "no-key") {
+    return (
+      <div className="mx-5 mt-4 rounded-2xl border p-5 text-center" style={{ borderColor: cssVar("--border"), background: cssVar("--surface-2") }}>
+        <p className="text-2xl mb-2">🗺️</p>
+        <p className="text-sm font-semibold">네이버 지도 API 키가 설정되지 않았어요</p>
+        <p className="text-xs mt-1.5" style={{ color: cssVar("--ink-soft") }}>
+          우측 상단 설정(프로필 아이콘)에서 네이버 지도 Client ID를 등록하면<br />농장 주소가 실제 지도에 표시됩니다.
+        </p>
+      </div>
+    );
+  }
+  if (mapState === "error") {
+    return (
+      <div className="mx-5 mt-4 rounded-2xl border p-5 text-center" style={{ borderColor: cssVar("--danger"), background: cssVar("--danger-tint") }}>
+        <p className="text-sm font-semibold" style={{ color: cssVar("--danger") }}>지도를 불러오지 못했습니다</p>
+        <p className="text-xs mt-1.5" style={{ color: cssVar("--ink-soft") }}>
+          Client ID가 올바른지, 그리고 네이버 클라우드 콘솔에 현재 접속 주소가<br />허용된 Web 서비스 URL로 등록되어 있는지 확인해 주세요.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-5 mt-4">
+      <div ref={mapDivRef} className="w-full h-[320px] rounded-2xl border overflow-hidden" style={{ borderColor: cssVar("--border") }}>
+        {mapState === "loading" && (
+          <div className="w-full h-full flex items-center justify-center text-sm" style={{ color: cssVar("--ink-faint") }}>
+            지도를 불러오는 중...
+          </div>
+        )}
+      </div>
+      <div className="flex items-center gap-4 mt-3 px-1 text-xs" style={{ color: cssVar("--ink-soft") }}>
+        {Object.entries(STATUS).map(([key, s]) => (
+          <span key={key} className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full" style={{ background: cssVar(s.c) }}></span>{s.label}
+          </span>
+        ))}
+      </div>
+      {farms.length > 0 && farms.every(f => typeof f.lat !== "number") && (
+        <p className="text-xs mt-3 text-center" style={{ color: cssVar("--ink-faint") }}>
+          등록된 농장의 좌표를 찾지 못했습니다. 주소를 다시 확인해 주세요.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* ---------------- 농장 등록 / 수정 폼 ---------------- */
+
+function emptyFarmDraft() {
+  return {
+    name: "", livestock: "hanwoo", status: "normal", owner: "", phone: "",
+    address: "", product: "", orders: [0, 0, 0], lastVisitDate: "", nextVisitDate: "", note: "",
+  };
+}
+
+function FarmFormModal({ initialFarm, clientId, onCancel, onSubmit }) {
+  const isEdit = !!initialFarm;
+  const [draft, setDraft] = useState(() => initialFarm ? { ...emptyFarmDraft(), ...initialFarm } : emptyFarmDraft());
+  const [saving, setSaving] = useState(false);
+  const [geoNote, setGeoNote] = useState("");
+
+  const setField = (key, value) => setDraft(d => ({ ...d, [key]: value }));
+  const setOrder = (idx, value) => setDraft(d => {
+    const orders = [...d.orders];
+    orders[idx] = Number(value) || 0;
+    return { ...d, orders };
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!draft.name.trim() || !draft.address.trim()) return;
+    setSaving(true);
+    setGeoNote("");
+
+    let lat = isEdit ? initialFarm.lat : undefined;
+    let lng = isEdit ? initialFarm.lng : undefined;
+    const addressChanged = !isEdit || initialFarm.address !== draft.address;
+
+    if (addressChanged) {
+      lat = undefined; lng = undefined;
+      try {
+        await ensureNaverMaps(clientId);
+        const geo = await geocodeAddress(draft.address);
+        if (geo) { lat = geo.lat; lng = geo.lng; }
+        else setGeoNote("주소를 찾지 못했어요. 저장은 되지만 지도에는 표시되지 않아요.");
+      } catch (err) {
+        setGeoNote("지도 API 키가 설정되지 않아 좌표를 확인하지 못했어요. 설정에서 키를 등록해 보세요.");
+      }
+    }
+
+    const farm = {
+      ...draft,
+      id: isEdit ? initialFarm.id : (Date.now() + "-" + Math.random().toString(36).slice(2, 7)),
+      lat, lng,
+    };
+    setSaving(false);
+    onSubmit(farm);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center modal-backdrop">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-black/45" onClick={onCancel}></div>
+      <div className="modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[92vh] overflow-y-auto" style={{ background: cssVar("--surface") }}>
+        <div className="sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between" style={{ background: cssVar("--surface"), borderColor: cssVar("--border") }}>
+          <h2 className="text-base font-bold">{isEdit ? "농장 정보 수정" : "새 농장 등록"}</h2>
+          <button onClick={onCancel} className="tap-active w-9 h-9 rounded-full flex items-center justify-center text-lg" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}>✕</button>
+        </div>
 
-      <div className="modal-sheet relative w-full max-w-[480px] bg-white rounded-t-3xl max-h-[88vh] overflow-y-auto shadow-2xl">
-        <div className="sticky top-0 bg-white pt-3 pb-2 px-5 border-b border-gray-100 rounded-t-3xl">
-          <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4">
+          <div>
+            <label className="field-label">농장명 *</label>
+            <input className="field" required value={draft.name} onChange={e => setField("name", e.target.value)} placeholder="예: 한라농장" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="field-label">사육 축종</label>
+              <select className="field" value={draft.livestock} onChange={e => setField("livestock", e.target.value)}>
+                {Object.entries(LIVESTOCK).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="field-label">상태</label>
+              <select className="field" value={draft.status} onChange={e => setField("status", e.target.value)}>
+                {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="field-label">농장주</label>
+              <input className="field" value={draft.owner} onChange={e => setField("owner", e.target.value)} placeholder="이름" />
+            </div>
+            <div>
+              <label className="field-label">연락처</label>
+              <input className="field" value={draft.phone} onChange={e => setField("phone", e.target.value)} placeholder="010-0000-0000" />
+            </div>
+          </div>
+
+          <div>
+            <label className="field-label">주소 *</label>
+            <input className="field" required value={draft.address} onChange={e => setField("address", e.target.value)} placeholder="예: 제주특별자치도 제주시 ○○로 123" />
+            <p className="text-[11px] mt-1.5" style={{ color: cssVar("--ink-faint") }}>저장하면 자동으로 지도 좌표를 찾아 지도 탭에 표시돼요.</p>
+          </div>
+
+          <div>
+            <label className="field-label">현재 사용 사료 제품</label>
+            <input className="field" value={draft.product} onChange={e => setField("product", e.target.value)} placeholder="예: 한우비육사료 A+" />
+          </div>
+
+          <div>
+            <label className="field-label">최근 3개월 주문량 (톤)</label>
+            <div className="grid grid-cols-3 gap-2">
+              {MONTH_TAG_LABELS.map((label, idx) => (
+                <div key={label}>
+                  <input type="number" min="0" className="field text-center font-mono" value={draft.orders[idx]} onChange={e => setOrder(idx, e.target.value)} />
+                  <p className="text-[10px] text-center mt-1" style={{ color: cssVar("--ink-faint") }}>{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="field-label">마지막 방문일</label>
+              <input type="date" className="field" value={draft.lastVisitDate} onChange={e => setField("lastVisitDate", e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label">다음 방문 예정일</label>
+              <input type="date" className="field" value={draft.nextVisitDate} onChange={e => setField("nextVisitDate", e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <label className="field-label">특이사항 메모</label>
+            <textarea className="field resize-none" rows={3} value={draft.note} onChange={e => setField("note", e.target.value)} placeholder="예: 최근 폭염으로 섭취량 저하 호소" />
+          </div>
+
+          {geoNote && (
+            <p className="text-xs rounded-lg p-2.5" style={{ background: cssVar("--warn-tint"), color: cssVar("--warn") }}>{geoNote}</p>
+          )}
+
+          <button type="submit" disabled={saving} className="tap-active w-full py-3.5 rounded-xl text-white font-bold text-sm disabled:opacity-60" style={{ background: cssVar("--brand") }}>
+            {saving ? "좌표 확인 중..." : isEdit ? "수정 완료" : "농장 등록"}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- 농장 상세 모달 ---------------- */
+
+function FarmDetailModal({ farm, onClose, onEdit, onDelete }) {
+  const l = LIVESTOCK[farm.livestock];
+
+  const handleDelete = () => {
+    if (window.confirm(`${farm.name} 정보를 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) onDelete(farm.id);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center modal-backdrop">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose}></div>
+      <div className="modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[88vh] overflow-y-auto" style={{ background: cssVar("--surface"), boxShadow: "0 -12px 40px -12px rgba(0,0,0,0.35)" }}>
+        <div className="sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b" style={{ background: cssVar("--surface"), borderColor: cssVar("--border") }}>
+          <div className="w-10 h-1.5 rounded-full mx-auto mb-3" style={{ background: cssVar("--border") }}></div>
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className={"w-12 h-12 rounded-2xl flex items-center justify-center text-2xl " + s.bg}>{l.icon}</div>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background: cssVar("--surface-2") }}>{l.icon}</div>
               <div>
-                <h2 className="text-lg font-bold text-gray-800">{farm.name}</h2>
-                <span className={"inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full mt-1 " + s.bg + " " + s.text}>
-                  <span className={"w-1.5 h-1.5 rounded-full " + s.dot}></span>{s.label}
-                </span>
+                <h2 className="text-lg font-bold">{farm.name}</h2>
+                <div className="mt-1"><StatusChip status={farm.status} /></div>
               </div>
             </div>
-            <button onClick={onClose} className="tap-active w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-lg">✕</button>
+            <button onClick={onClose} className="tap-active w-9 h-9 rounded-full flex items-center justify-center text-lg" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}>✕</button>
           </div>
         </div>
 
         <div className="p-5 space-y-5">
           <section className="grid grid-cols-2 gap-3">
-            <div className="bg-brand-50 rounded-xl p-3.5">
-              <p className="text-[11px] text-brand-600 font-semibold">농장주</p>
-              <p className="text-sm font-bold text-gray-800 mt-1">{farm.owner}</p>
+            <div className="rounded-xl p-3.5" style={{ background: cssVar("--surface-2") }}>
+              <p className="text-[11px] font-semibold tracking-wide" style={{ color: cssVar("--ink-faint") }}>농장주</p>
+              <p className="text-sm font-bold mt-1">{farm.owner || "미입력"}</p>
             </div>
-            <a href={"tel:" + farm.phone} className="tap-active bg-brand-600 rounded-xl p-3.5 text-white flex flex-col justify-between">
-              <p className="text-[11px] text-brand-100 font-semibold">연락처 · 통화하기 📞</p>
-              <p className="text-sm font-bold mt-1">{farm.phone}</p>
-            </a>
+            {farm.phone ? (
+              <a href={"tel:" + farm.phone} className="tap-active rounded-xl p-3.5 text-white flex flex-col justify-between" style={{ background: cssVar("--brand") }}>
+                <p className="text-[11px] font-semibold tracking-wide text-white/75">연락처 · 통화하기 📞</p>
+                <p className="text-sm font-bold mt-1 font-mono">{farm.phone}</p>
+              </a>
+            ) : (
+              <div className="rounded-xl p-3.5" style={{ background: cssVar("--surface-2") }}>
+                <p className="text-[11px] font-semibold tracking-wide" style={{ color: cssVar("--ink-faint") }}>연락처</p>
+                <p className="text-sm font-bold mt-1">미입력</p>
+              </div>
+            )}
           </section>
 
-          <section className="bg-gray-50 rounded-xl p-3.5">
-            <p className="text-[11px] text-gray-500 font-semibold">현재 사용 사료 제품</p>
-            <p className="text-sm font-bold text-gray-800 mt-1">{farm.product}</p>
+          <section className="rounded-xl p-3.5" style={{ background: cssVar("--surface-2") }}>
+            <p className="text-[11px] font-semibold tracking-wide" style={{ color: cssVar("--ink-faint") }}>주소</p>
+            <p className="text-sm font-bold mt-1">{farm.address}</p>
+            {typeof farm.lat !== "number" && (
+              <p className="text-[11px] mt-1" style={{ color: cssVar("--warn") }}>지도 좌표 없음 — 지도 탭에는 표시되지 않아요.</p>
+            )}
+          </section>
+
+          <section className="rounded-xl p-3.5" style={{ background: cssVar("--surface-2") }}>
+            <p className="text-[11px] font-semibold tracking-wide" style={{ color: cssVar("--ink-faint") }}>현재 사용 사료 제품</p>
+            <p className="text-sm font-bold mt-1">{farm.product || "미입력"}</p>
           </section>
 
           <section>
-            <p className="text-sm font-bold text-gray-800 mb-1">최근 3개월 주문량 추이</p>
-            <div className="bg-white rounded-xl ring-1 ring-gray-100 p-3">
+            <p className="text-sm font-bold mb-1.5">최근 3개월 주문량 추이</p>
+            <div className="rounded-xl p-3 border" style={{ borderColor: cssVar("--border") }}>
               <OrderChart orders={farm.orders} />
             </div>
           </section>
 
           <section>
-            <p className="text-sm font-bold text-gray-800 mb-1.5">특이사항 메모</p>
-            <textarea
-              value={memo}
-              onChange={e => setMemo(e.target.value)}
-              rows={3}
-              className="w-full text-sm rounded-xl border border-gray-200 p-3 focus:outline-none focus:ring-2 focus:ring-brand-300 resize-none text-gray-700"
-            />
-            <button
-              onClick={handleSave}
-              className="tap-active w-full mt-2 py-3 rounded-xl bg-brand-600 text-white font-bold text-sm shadow-md shadow-brand-600/20"
-            >
-              {saved ? "저장됨 ✓" : "메모 저장"}
+            <p className="text-sm font-bold mb-1.5">특이사항 메모</p>
+            <p className="text-sm rounded-xl p-3.5 whitespace-pre-wrap" style={{ background: cssVar("--surface-2"), color: farm.note ? cssVar("--ink") : cssVar("--ink-faint") }}>
+              {farm.note || "메모가 없습니다."}
+            </p>
+          </section>
+
+          <section className="flex gap-2 pt-1">
+            <button onClick={() => onEdit(farm)} className="tap-active flex-1 py-3 rounded-xl font-bold text-sm border" style={{ borderColor: cssVar("--border"), color: cssVar("--ink") }}>
+              정보 수정
+            </button>
+            <button onClick={handleDelete} className="tap-active flex-1 py-3 rounded-xl font-bold text-sm" style={{ background: cssVar("--danger-tint"), color: cssVar("--danger") }}>
+              삭제
             </button>
           </section>
         </div>
@@ -385,11 +801,80 @@ function FarmDetailModal({ farm, onClose }) {
   );
 }
 
-function EmptyState() {
+/* ---------------- 설정 모달 ---------------- */
+
+function SettingsModal({ profile, clientId, onClose, onSaveProfile, onSaveClientId, onResetAll }) {
+  const [name, setName] = useState(profile.name);
+  const [region, setRegion] = useState(profile.region);
+  const [targetRate, setTargetRate] = useState(profile.targetRate);
+  const [keyInput, setKeyInput] = useState(clientId);
+
+  const handleSaveProfile = () => onSaveProfile({ name, region, targetRate: Number(targetRate) || 0 });
+  const handleSaveKey = () => onSaveClientId(keyInput.trim());
+
   return (
-    <div className="text-center py-16 text-gray-400">
-      <p className="text-4xl mb-2">🌿</p>
-      <p className="text-sm font-medium">조건에 맞는 농장이 없습니다.</p>
+    <div className="fixed inset-0 z-50 flex items-end justify-center modal-backdrop">
+      <div className="absolute inset-0 bg-black/45" onClick={onClose}></div>
+      <div className="modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[90vh] overflow-y-auto" style={{ background: cssVar("--surface") }}>
+        <div className="sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between" style={{ background: cssVar("--surface"), borderColor: cssVar("--border") }}>
+          <h2 className="text-base font-bold">설정</h2>
+          <button onClick={onClose} className="tap-active w-9 h-9 rounded-full flex items-center justify-center text-lg" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}>✕</button>
+        </div>
+
+        <div className="p-5 space-y-6">
+          <section className="space-y-3">
+            <h3 className="text-sm font-bold">담당자 정보</h3>
+            <div>
+              <label className="field-label">담당자 이름</label>
+              <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="예: 박영업" />
+            </div>
+            <div>
+              <label className="field-label">담당 구역</label>
+              <input className="field" value={region} onChange={e => setRegion(e.target.value)} placeholder="예: 영업 담당구역 · 남부권역" />
+            </div>
+            <div>
+              <label className="field-label">이번 달 목표 달성률 (%)</label>
+              <input type="number" min="0" max="999" className="field font-mono" value={targetRate} onChange={e => setTargetRate(e.target.value)} />
+            </div>
+            <button onClick={handleSaveProfile} className="tap-active w-full py-2.5 rounded-xl text-white font-bold text-sm" style={{ background: cssVar("--brand") }}>
+              담당자 정보 저장
+            </button>
+          </section>
+
+          <section className="space-y-3 pt-2 border-t" style={{ borderColor: cssVar("--border") }}>
+            <h3 className="text-sm font-bold">네이버 지도 연동</h3>
+            <div>
+              <label className="field-label">네이버 지도 Client ID (ncpClientId)</label>
+              <input className="field font-mono" value={keyInput} onChange={e => setKeyInput(e.target.value)} placeholder="예: abcd1234ef" />
+            </div>
+            <button onClick={handleSaveKey} className="tap-active w-full py-2.5 rounded-xl font-bold text-sm border" style={{ borderColor: cssVar("--brand"), color: cssVar("--brand") }}>
+              키 저장 (저장 후 새로고침됩니다)
+            </button>
+            <div className="text-[11px] leading-relaxed rounded-xl p-3" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}>
+              <p className="font-semibold mb-1" style={{ color: cssVar("--ink") }}>키 발급 방법</p>
+              <ol className="list-decimal list-inside space-y-0.5">
+                <li>console.ncloud.com 에서 네이버 클라우드 플랫폼 계정으로 로그인</li>
+                <li>AI·NAVER API → Application 등록 → "Maps" 선택</li>
+                <li>Web Dynamic Map, Geocoding 서비스 체크</li>
+                <li>Web 서비스 URL에 현재 접속 주소(예: http://localhost:8000) 등록</li>
+                <li>발급된 Client ID를 위 입력창에 붙여넣기</li>
+              </ol>
+              <p className="mt-1.5">※ 콘솔 화면 구성은 업데이트에 따라 달라질 수 있어요.</p>
+            </div>
+          </section>
+
+          <section className="space-y-2 pt-2 border-t" style={{ borderColor: cssVar("--border") }}>
+            <h3 className="text-sm font-bold">데이터 관리</h3>
+            <button
+              onClick={() => { if (window.confirm("등록된 모든 농장 데이터를 삭제할까요?")) onResetAll(); }}
+              className="tap-active w-full py-2.5 rounded-xl font-bold text-sm"
+              style={{ background: cssVar("--danger-tint"), color: cssVar("--danger") }}
+            >
+              전체 농장 데이터 초기화
+            </button>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
@@ -397,38 +882,121 @@ function EmptyState() {
 /* ------------------------- 메인 앱 ------------------------- */
 
 function App() {
+  const [farms, setFarms] = useState(() => loadJSON(STORAGE_KEYS.farms, []));
+  const [clientId, setClientId] = useState(() => loadJSON(STORAGE_KEYS.clientId, ""));
+  const [profile, setProfile] = useState(() => loadJSON(STORAGE_KEYS.profile, { name: "", region: "", targetRate: 0 }));
+
+  const [view, setView] = useState("list");
   const [statusFilter, setStatusFilter] = useState("all");
   const [livestockFilter, setLivestockFilter] = useState("all");
+
   const [selectedFarm, setSelectedFarm] = useState(null);
+  const [formState, setFormState] = useState(null); // null | { mode: 'create' } | { mode: 'edit', farm }
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => saveJSON(STORAGE_KEYS.farms, farms), [farms]);
+  useEffect(() => saveJSON(STORAGE_KEYS.profile, profile), [profile]);
+
+  useEffect(() => {
+    if (clientId) ensureNaverMaps(clientId).catch(() => {});
+  }, [clientId]);
+
+  const todayCount = useMemo(() => farms.filter(f => f.nextVisitDate === todayStr()).length, [farms]);
 
   const filteredFarms = useMemo(() => {
-    return FARMS.filter(f => {
+    return farms.filter(f => {
       if (statusFilter === "risk" && f.status === "normal") return false;
       if (livestockFilter !== "all" && f.livestock !== livestockFilter) return false;
       return true;
     });
-  }, [statusFilter, livestockFilter]);
+  }, [farms, statusFilter, livestockFilter]);
+
+  const handleCreateSubmit = (farm) => { setFarms(list => [farm, ...list]); setFormState(null); };
+  const handleEditSubmit = (farm) => {
+    setFarms(list => list.map(f => f.id === farm.id ? farm : f));
+    setFormState(null);
+    setSelectedFarm(farm);
+  };
+  const handleDelete = (id) => { setFarms(list => list.filter(f => f.id !== id)); setSelectedFarm(null); };
+
+  const handleSaveClientId = (id) => {
+    setClientId(id);
+    saveJSON(STORAGE_KEYS.clientId, id);
+    setShowSettings(false);
+    window.location.reload();
+  };
 
   return (
-    <div className="pb-10">
-      <Header />
-      <FilterBar
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        livestockFilter={livestockFilter}
-        setLivestockFilter={setLivestockFilter}
-      />
+    <div id="app-shell" className="max-w-[430px] mx-auto min-h-screen pb-24">
+      <Header profile={profile} todayCount={todayCount} onOpenSettings={() => setShowSettings(true)} />
+      <ViewToggle view={view} setView={setView} />
 
-      <main className="px-4 mt-4 space-y-3">
-        {filteredFarms.length === 0
-          ? <EmptyState />
-          : filteredFarms.map(farm => (
-              <FarmCard key={farm.id} farm={farm} onClick={() => setSelectedFarm(farm)} />
-            ))}
-      </main>
+      {view === "list" && farms.length > 0 && (
+        <FilterBar statusFilter={statusFilter} setStatusFilter={setStatusFilter} livestockFilter={livestockFilter} setLivestockFilter={setLivestockFilter} />
+      )}
+
+      {view === "list" ? (
+        <main className="px-5 mt-4 space-y-3">
+          {farms.length === 0 ? (
+            <div className="text-center py-16 px-4">
+              <p className="text-4xl mb-3">🌱</p>
+              <p className="text-sm font-semibold">아직 등록된 농장이 없어요</p>
+              <p className="text-xs mt-1.5" style={{ color: cssVar("--ink-faint") }}>담당 구역의 농장 정보를 직접 등록해 보세요.</p>
+              <button onClick={() => setFormState({ mode: "create" })} className="tap-active mt-5 px-5 py-2.5 rounded-xl text-white font-bold text-sm" style={{ background: cssVar("--brand") }}>
+                + 첫 농장 등록하기
+              </button>
+            </div>
+          ) : filteredFarms.length === 0 ? (
+            <div className="text-center py-16" style={{ color: cssVar("--ink-faint") }}>
+              <p className="text-4xl mb-2">🌿</p>
+              <p className="text-sm font-medium">조건에 맞는 농장이 없습니다.</p>
+            </div>
+          ) : (
+            filteredFarms.map(farm => <FarmCard key={farm.id} farm={farm} onClick={() => setSelectedFarm(farm)} />)
+          )}
+        </main>
+      ) : (
+        <NaverMapView farms={farms} clientId={clientId} onSelect={setSelectedFarm} />
+      )}
+
+      {farms.length > 0 && (
+        <button
+          onClick={() => setFormState({ mode: "create" })}
+          className="tap-active fixed bottom-6 right-6 w-14 h-14 rounded-full text-white text-2xl font-bold flex items-center justify-center z-30"
+          style={{ background: cssVar("--brand"), boxShadow: "0 10px 24px -8px rgba(var(--shadow), 0.5)" }}
+          aria-label="농장 추가"
+        >
+          +
+        </button>
+      )}
 
       {selectedFarm && (
-        <FarmDetailModal farm={selectedFarm} onClose={() => setSelectedFarm(null)} />
+        <FarmDetailModal
+          farm={selectedFarm}
+          onClose={() => setSelectedFarm(null)}
+          onEdit={(farm) => { setSelectedFarm(null); setFormState({ mode: "edit", farm }); }}
+          onDelete={handleDelete}
+        />
+      )}
+
+      {formState && (
+        <FarmFormModal
+          initialFarm={formState.mode === "edit" ? formState.farm : null}
+          clientId={clientId}
+          onCancel={() => setFormState(null)}
+          onSubmit={formState.mode === "edit" ? handleEditSubmit : handleCreateSubmit}
+        />
+      )}
+
+      {showSettings && (
+        <SettingsModal
+          profile={profile}
+          clientId={clientId}
+          onClose={() => setShowSettings(false)}
+          onSaveProfile={(p) => { setProfile(p); setShowSettings(false); }}
+          onSaveClientId={handleSaveClientId}
+          onResetAll={() => { setFarms([]); setShowSettings(false); }}
+        />
       )}
     </div>
   );
