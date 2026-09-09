@@ -7,7 +7,7 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
@@ -19,7 +19,6 @@
   /* ---------- Design tokens ---------- */
   :root {
     --bg: #eef3ea;
-    --furrow: rgba(31, 92, 61, 0.05);
     --surface: #ffffff;
     --surface-2: #eef3ea;
     --border: #d8e3d3;
@@ -42,7 +41,6 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #0f1811;
-      --furrow: rgba(111, 190, 140, 0.045);
       --surface: #172119;
       --surface-2: #1d2a20;
       --border: #2b3a2d;
@@ -65,7 +63,6 @@
   }
   :root[data-theme="dark"] {
     --bg: #0f1811;
-    --furrow: rgba(111, 190, 140, 0.045);
     --surface: #172119;
     --surface-2: #1d2a20;
     --border: #2b3a2d;
@@ -88,12 +85,11 @@
 
   html, body { background: var(--bg); }
   body {
-    font-family: 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
     color: var(--ink);
     background-color: var(--bg);
-    background-image: repeating-linear-gradient(115deg, transparent, transparent 25px, var(--furrow) 25px, var(--furrow) 27px);
+    -webkit-font-smoothing: antialiased;
   }
-  .font-wordmark { font-family: 'Gowun Batang', Georgia, 'Nanum Myeongjo', serif; }
   .font-mono { font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace; font-variant-numeric: tabular-nums; }
   #app-shell {
     background: var(--surface);
@@ -104,7 +100,27 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
   .tap-active { -webkit-tap-highlight-color: transparent; transition: transform .12s ease; }
   .tap-active:active { transform: scale(0.97); }
-  h1, h2, h3 { text-wrap: balance; }
+  h1, h2, h3 { text-wrap: balance; letter-spacing: -0.01em; }
+  .icon { display: inline-block; vertical-align: -0.125em; }
+  .seg {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 14px;
+    background: var(--surface-2);
+    gap: 2px;
+  }
+  .seg-btn {
+    border-radius: 11px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+  .seg-btn.is-active {
+    background: var(--surface);
+    color: var(--brand);
+    box-shadow: 0 1px 3px rgba(var(--shadow), 0.12);
+  }
 
   .field {
     width: 100%;
@@ -167,6 +183,29 @@ const STORAGE_KEYS = {
 };
 
 const cssVar = (name) => `var(${name})`;
+
+/* ------------------------- 아이콘 (인라인 SVG) ------------------------- */
+
+function Icon({ children, size = 18, className = "" }) {
+  return (
+    <svg
+      className={"icon " + className}
+      width={size} height={size} viewBox="0 0 24 24"
+      fill="none" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round"
+    >
+      {children}
+    </svg>
+  );
+}
+const GearIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></Icon>;
+const CloseIcon = (p) => <Icon {...p}><path d="M18 6 6 18M6 6l12 12" /></Icon>;
+const PlusIcon = (p) => <Icon {...p}><path d="M12 5v14M5 12h14" /></Icon>;
+const ChevronIcon = (p) => <Icon {...p}><path d="m9 18 6-6-6-6" /></Icon>;
+const PhoneIcon = (p) => <Icon {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></Icon>;
+const PinIcon = (p) => <Icon {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></Icon>;
+const MapIcon = (p) => <Icon {...p}><path d="M3 6.5 9 4l6 2.5 6-2.5v13L15 19.5 9 17l-6 2.5Z" /><path d="M9 4v13M15 6.5v13" /></Icon>;
+const SproutIcon = (p) => <Icon {...p}><path d="M7 20h10M12 20v-7" /><path d="M12 13c0-3.5-2-5.5-6-6 0 4 1.5 6.5 6 6Z" /><path d="M12 10c0-3 1.8-5 5-6 0 3.5-1.3 6-5 6Z" /></Icon>;
 
 function todayStr() {
   const d = new Date();
@@ -251,7 +290,6 @@ function StatusChip({ status }) {
 }
 
 function Header({ profile, todayCount, onOpenSettings }) {
-  const initial = profile.name ? profile.name.slice(-1) : "👤";
   return (
     <header
       className="text-white px-5 pt-7 pb-8 rounded-b-[28px]"
@@ -262,14 +300,14 @@ function Header({ profile, todayCount, onOpenSettings }) {
           <p className="text-[11px] font-medium tracking-wide text-white/70">
             {profile.region ? profile.region : "담당 구역 미설정 · 설정에서 입력"}
           </p>
-          <h1 className="font-wordmark text-2xl font-bold mt-1">농장 순회 CRM</h1>
+          <h1 className="text-[22px] font-black mt-1">농장 순회 CRM</h1>
         </div>
         <button
           onClick={onOpenSettings}
-          className="tap-active w-11 h-11 rounded-full bg-white/15 flex items-center justify-center text-base font-semibold ring-1 ring-white/25"
+          className="tap-active w-11 h-11 rounded-full bg-white/15 flex items-center justify-center ring-1 ring-white/25"
           aria-label="설정"
         >
-          {initial}
+          <GearIcon size={19} />
         </button>
       </div>
 
@@ -300,22 +338,18 @@ function ViewToggle({ view, setView }) {
     { key: "map", label: "지도" },
   ];
   return (
-    <div className="flex gap-2 px-5 mt-5">
-      {items.map(it => {
-        const active = view === it.key;
-        return (
+    <div className="px-5 mt-5">
+      <div className="seg w-full">
+        {items.map(it => (
           <button
             key={it.key}
             onClick={() => setView(it.key)}
-            className="tap-active flex-1 py-2.5 rounded-xl text-sm font-semibold border"
-            style={active
-              ? { background: cssVar("--brand"), borderColor: cssVar("--brand"), color: "#fff" }
-              : { background: cssVar("--surface"), borderColor: cssVar("--border"), color: cssVar("--ink-soft") }}
+            className={"tap-active seg-btn flex-1" + (view === it.key ? " is-active" : "")}
           >
             {it.label}
           </button>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
@@ -323,26 +357,20 @@ function ViewToggle({ view, setView }) {
 function FilterBar({ statusFilter, setStatusFilter, livestockFilter, setLivestockFilter }) {
   const statusChips = [
     { key: "all", label: "전체 보기" },
-    { key: "risk", label: "⚠ 위험·관심만" },
+    { key: "risk", label: "위험·관심만" },
   ];
   return (
     <div className="px-5 mt-3 space-y-2.5">
-      <div className="flex gap-2">
-        {statusChips.map(c => {
-          const active = statusFilter === c.key;
-          return (
-            <button
-              key={c.key}
-              onClick={() => setStatusFilter(c.key)}
-              className="tap-active flex-1 py-2 rounded-xl text-xs font-semibold border"
-              style={active
-                ? { background: cssVar("--brand-tint"), borderColor: cssVar("--brand"), color: cssVar("--brand") }
-                : { background: cssVar("--surface"), borderColor: cssVar("--border"), color: cssVar("--ink-soft") }}
-            >
-              {c.label}
-            </button>
-          );
-        })}
+      <div className="seg w-full">
+        {statusChips.map(c => (
+          <button
+            key={c.key}
+            onClick={() => setStatusFilter(c.key)}
+            className={"tap-active seg-btn flex-1" + (statusFilter === c.key ? " is-active" : "")}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-5 px-5">
@@ -385,10 +413,8 @@ function FarmCard({ farm, onClick }) {
       className="tap-active w-full text-left rounded-2xl pl-4 pr-3.5 py-4 flex items-center gap-3 border-l-4"
       style={{
         background: cssVar("--surface"),
-        borderColor: cssVar("--border"),
         borderLeftColor: cssVar(s.c),
-        boxShadow: `0 1px 2px rgba(var(--shadow), 0.04), 0 8px 20px -14px rgba(var(--shadow), 0.35)`,
-        borderTopWidth: "1px", borderRightWidth: "1px", borderBottomWidth: "1px",
+        boxShadow: `0 1px 2px rgba(var(--shadow), 0.04), 0 6px 16px -12px rgba(var(--shadow), 0.4)`,
       }}
     >
       <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{ background: cssVar("--surface-2") }}>
@@ -408,13 +434,15 @@ function FarmCard({ farm, onClick }) {
           {l.label} · {dSince === null ? "방문 기록 없음" : `마지막 방문 D-${dSince}`}
         </p>
         {farm.address && (
-          <p className="text-[11px] mt-0.5 truncate" style={{ color: cssVar("--ink-faint") }}>📍 {farm.address}</p>
+          <p className="text-[11px] mt-0.5 truncate flex items-center gap-1" style={{ color: cssVar("--ink-faint") }}>
+            <PinIcon size={11} /> {farm.address}
+          </p>
         )}
       </div>
 
       <div className="flex flex-col items-end gap-1.5 shrink-0">
         <StatusChip status={farm.status} />
-        <span style={{ color: cssVar("--ink-faint") }} className="text-lg leading-none">›</span>
+        <ChevronIcon size={16} className="opacity-50" />
       </div>
     </button>
   );
@@ -446,7 +474,7 @@ function OrderChart({ orders }) {
         plugins: { legend: { display: false } },
         scales: {
           y: { beginAtZero: true, grid: { color: grid }, ticks: { color: ink, font: { size: 11, family: "'IBM Plex Mono', monospace" } } },
-          x: { grid: { display: false }, ticks: { color: ink, font: { size: 12, weight: "600", family: "'IBM Plex Sans KR', sans-serif" } } },
+          x: { grid: { display: false }, ticks: { color: ink, font: { size: 12, weight: "600", family: "'Noto Sans KR', sans-serif" } } },
         },
       },
     });
@@ -523,8 +551,10 @@ function NaverMapView({ farms, clientId, onSelect }) {
 
   if (mapState === "no-key") {
     return (
-      <div className="mx-5 mt-4 rounded-2xl border p-5 text-center" style={{ borderColor: cssVar("--border"), background: cssVar("--surface-2") }}>
-        <p className="text-2xl mb-2">🗺️</p>
+      <div className="mx-5 mt-4 rounded-2xl border p-6 text-center" style={{ borderColor: cssVar("--border"), background: cssVar("--surface-2") }}>
+        <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ background: cssVar("--brand-tint"), color: cssVar("--brand") }}>
+          <MapIcon size={20} />
+        </div>
         <p className="text-sm font-semibold">네이버 지도 API 키가 설정되지 않았어요</p>
         <p className="text-xs mt-1.5" style={{ color: cssVar("--ink-soft") }}>
           우측 상단 설정(프로필 아이콘)에서 네이버 지도 Client ID를 등록하면<br />농장 주소가 실제 지도에 표시됩니다.
@@ -627,7 +657,7 @@ function FarmFormModal({ initialFarm, clientId, onCancel, onSubmit }) {
       <div className="modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[92vh] overflow-y-auto" style={{ background: cssVar("--surface") }}>
         <div className="sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between" style={{ background: cssVar("--surface"), borderColor: cssVar("--border") }}>
           <h2 className="text-base font-bold">{isEdit ? "농장 정보 수정" : "새 농장 등록"}</h2>
-          <button onClick={onCancel} className="tap-active w-9 h-9 rounded-full flex items-center justify-center text-lg" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}>✕</button>
+          <button onClick={onCancel} className="tap-active w-9 h-9 rounded-full flex items-center justify-center" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}><CloseIcon size={16} /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -737,7 +767,7 @@ function FarmDetailModal({ farm, onClose, onEdit, onDelete }) {
                 <div className="mt-1"><StatusChip status={farm.status} /></div>
               </div>
             </div>
-            <button onClick={onClose} className="tap-active w-9 h-9 rounded-full flex items-center justify-center text-lg" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}>✕</button>
+            <button onClick={onClose} className="tap-active w-9 h-9 rounded-full flex items-center justify-center" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}><CloseIcon size={16} /></button>
           </div>
         </div>
 
@@ -749,7 +779,9 @@ function FarmDetailModal({ farm, onClose, onEdit, onDelete }) {
             </div>
             {farm.phone ? (
               <a href={"tel:" + farm.phone} className="tap-active rounded-xl p-3.5 text-white flex flex-col justify-between" style={{ background: cssVar("--brand") }}>
-                <p className="text-[11px] font-semibold tracking-wide text-white/75">연락처 · 통화하기 📞</p>
+                <p className="text-[11px] font-semibold tracking-wide text-white/75 flex items-center gap-1">
+                  <PhoneIcon size={12} /> 연락처 · 통화하기
+                </p>
                 <p className="text-sm font-bold mt-1 font-mono">{farm.phone}</p>
               </a>
             ) : (
@@ -818,7 +850,7 @@ function SettingsModal({ profile, clientId, onClose, onSaveProfile, onSaveClient
       <div className="modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[90vh] overflow-y-auto" style={{ background: cssVar("--surface") }}>
         <div className="sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between" style={{ background: cssVar("--surface"), borderColor: cssVar("--border") }}>
           <h2 className="text-base font-bold">설정</h2>
-          <button onClick={onClose} className="tap-active w-9 h-9 rounded-full flex items-center justify-center text-lg" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}>✕</button>
+          <button onClick={onClose} className="tap-active w-9 h-9 rounded-full flex items-center justify-center" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}><CloseIcon size={16} /></button>
         </div>
 
         <div className="p-5 space-y-6">
@@ -939,16 +971,20 @@ function App() {
         <main className="px-5 mt-4 space-y-3">
           {farms.length === 0 ? (
             <div className="text-center py-16 px-4">
-              <p className="text-4xl mb-3">🌱</p>
+              <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-4" style={{ background: cssVar("--brand-tint"), color: cssVar("--brand") }}>
+                <SproutIcon size={26} />
+              </div>
               <p className="text-sm font-semibold">아직 등록된 농장이 없어요</p>
               <p className="text-xs mt-1.5" style={{ color: cssVar("--ink-faint") }}>담당 구역의 농장 정보를 직접 등록해 보세요.</p>
-              <button onClick={() => setFormState({ mode: "create" })} className="tap-active mt-5 px-5 py-2.5 rounded-xl text-white font-bold text-sm" style={{ background: cssVar("--brand") }}>
-                + 첫 농장 등록하기
+              <button onClick={() => setFormState({ mode: "create" })} className="tap-active mt-5 px-5 py-2.5 rounded-xl text-white font-bold text-sm inline-flex items-center gap-1.5" style={{ background: cssVar("--brand") }}>
+                <PlusIcon size={15} /> 첫 농장 등록하기
               </button>
             </div>
           ) : filteredFarms.length === 0 ? (
             <div className="text-center py-16" style={{ color: cssVar("--ink-faint") }}>
-              <p className="text-4xl mb-2">🌿</p>
+              <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3" style={{ background: cssVar("--surface-2") }}>
+                <SproutIcon size={24} />
+              </div>
               <p className="text-sm font-medium">조건에 맞는 농장이 없습니다.</p>
             </div>
           ) : (
@@ -962,11 +998,11 @@ function App() {
       {farms.length > 0 && (
         <button
           onClick={() => setFormState({ mode: "create" })}
-          className="tap-active fixed bottom-6 right-6 w-14 h-14 rounded-full text-white text-2xl font-bold flex items-center justify-center z-30"
+          className="tap-active fixed bottom-6 right-6 w-14 h-14 rounded-full text-white flex items-center justify-center z-30"
           style={{ background: cssVar("--brand"), boxShadow: "0 10px 24px -8px rgba(var(--shadow), 0.5)" }}
           aria-label="농장 추가"
         >
-          +
+          <PlusIcon size={24} />
         </button>
       )}
 
