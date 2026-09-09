@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>농장 순회 CRM 대시보드</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50: '#f0faf4',
+            100: '#dcf3e4',
+            200: '#b8e6c9',
+            400: '#4cae6f',
+            500: '#2e8b52',
+            600: '#217041',
+            700: '#1b5a35',
+            800: '#164a2c',
+          },
+        },
+      },
+    },
+  };
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+
+<style>
+  html, body { background:#f4f8f5; }
+  #root { max-width: 480px; margin: 0 auto; min-height: 100vh; background:#f4f8f5; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #c8ded0; border-radius: 999px; }
+  .chip { -webkit-tap-highlight-color: transparent; }
+  .tap-active:active { transform: scale(0.97); }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(24px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-backdrop { animation: fadeIn .18s ease-out; }
+  .modal-sheet { animation: slideUp .22s cubic-bezier(.2,.9,.3,1); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel-source" id="app-source">
+const { useState, useEffect, useRef, useMemo } = React;
+
+/* ------------------------- 더미 데이터 ------------------------- */
+
+const LIVESTOCK = {
+  hanwoo: { label: "한우", icon: "🐂" },
+  dairy:  { label: "낙농", icon: "🐄" },
+  pig:    { label: "양돈", icon: "🐖" },
+  poultry:{ label: "양계", icon: "🐔" },
+};
+
+const STATUS = {
+  normal:  { label: "정상",     dot: "bg-emerald-500", text: "text-emerald-700", bg: "bg-emerald-50",  ring: "ring-emerald-200", bar: "bg-emerald-500" },
+  caution: { label: "관심 필요", dot: "bg-amber-500",   text: "text-amber-700",   bg: "bg-amber-50",    ring: "ring-amber-200",   bar: "bg-amber-500" },
+  danger:  { label: "위험",     dot: "bg-rose-500",    text: "text-rose-700",    bg: "bg-rose-50",     ring: "ring-rose-200",    bar: "bg-rose-500" },
+};
+
+const FARMS = [
+  {
+    id: 1,
+    name: "한라농장",
+    livestock: "hanwoo",
+    lastVisitDays: 3,
+    todayVisit: true,
+    status: "normal",
+    owner: "김한라",
+    phone: "010-1234-5678",
+    product: "한우비육사료 A+",
+    orders: [120, 135, 140],
+    note: "특이사항 없음. 사료 급여 상태 안정적으로 유지되고 있음.",
+  },
+  {
+    id: 2,
+    name: "대박목장",
+    livestock: "dairy",
+    lastVisitDays: 20,
+    todayVisit: false,
+    status: "danger",
+    owner: "이대박",
+    phone: "010-2345-6789",
+    product: "낙농고급배합사료",
+    orders: [95, 80, 55],
+    note: "최근 원유 생산량 감소 추세. 미수금 240만원 발생, 긴급 방문 필요.",
+  },
+  {
+    id: 3,
+    name: "초록낙농",
+    livestock: "dairy",
+    lastVisitDays: 5,
+    todayVisit: true,
+    status: "normal",
+    owner: "박초록",
+    phone: "010-3456-7890",
+    product: "낙농 TMR 사료",
+    orders: [110, 115, 118],
+    note: "우유 생산량 안정적. 추가 발주 문의 있음.",
+  },
+  {
+    id: 4,
+    name: "튼튼양돈장",
+    livestock: "pig",
+    lastVisitDays: 12,
+    todayVisit: false,
+    status: "caution",
+    owner: "최튼튼",
+    phone: "010-4567-8901",
+    product: "양돈비육사료 프리미엄",
+    orders: [200, 190, 165],
+    note: "최근 폭염으로 인한 돼지 섭취량 저하 호소. 사양관리 상담 필요.",
+  },
+  {
+    id: 5,
+    name: "자유양계장",
+    livestock: "poultry",
+    lastVisitDays: 8,
+    todayVisit: true,
+    status: "normal",
+    owner: "정자유",
+    phone: "010-5678-9012",
+    product: "산란계 배합사료",
+    orders: [75, 78, 80],
+    note: "산란율 우수, 거래 만족도 높음.",
+  },
+  {
+    id: 6,
+    name: "황금한우목장",
+    livestock: "hanwoo",
+    lastVisitDays: 25,
+    todayVisit: false,
+    status: "danger",
+    owner: "서황금",
+    phone: "010-6789-0123",
+    product: "한우육성사료",
+    orders: [130, 100, 70],
+    note: "타 브랜드 사료 견적 문의 확인됨. 이탈 우려로 긴급 대응 필요.",
+  },
+];
+
+const MONTH_LABELS = ["7월", "8월", "9월"];
+const MONTHLY_TARGET = "1,240톤";
+const TARGET_RATE = 85;
+
+/* ------------------------- 서브 컴포넌트 ------------------------- */
+
+function Header() {
+  const todayCount = FARMS.filter(f => f.todayVisit).length;
+  return (
+    <header className="bg-brand-600 text-white px-4 pt-6 pb-8 rounded-b-3xl shadow-lg shadow-brand-800/20">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-brand-100 text-xs font-medium tracking-wide">영업 담당구역 · 남부권역</p>
+          <h1 className="text-xl font-bold mt-0.5">🌾 농장 순회 CRM</h1>
+        </div>
+        <div className="w-11 h-11 rounded-full bg-brand-500/60 flex items-center justify-center text-lg font-semibold ring-2 ring-white/30">
+          박
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 mt-5">
+        <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5">
+          <p className="text-[11px] text-brand-100 font-medium">오늘 방문 예정</p>
+          <p className="text-2xl font-bold mt-1 leading-none">{todayCount}<span className="text-sm font-semibold ml-1">곳</span></p>
+        </div>
+        <div className="bg-white/10 backdrop-blur rounded-2xl p-3.5">
+          <p className="text-[11px] text-brand-100 font-medium">이번 달 목표 달성률</p>
+          <p className="text-2xl font-bold mt-1 leading-none">{TARGET_RATE}<span className="text-sm font-semibold ml-1">%</span></p>
+          <div className="w-full h-1.5 bg-white/20 rounded-full mt-2 overflow-hidden">
+            <div className="h-full bg-white rounded-full" style={{ width: TARGET_RATE + "%" }} />
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function FilterBar({ statusFilter, setStatusFilter, livestockFilter, setLivestockFilter }) {
+  const statusChips = [
+    { key: "all", label: "전체 보기" },
+    { key: "risk", label: "⚠ 위험·관심만" },
+  ];
+  return (
+    <div className="px-4 mt-4 space-y-2.5">
+      <div className="flex gap-2">
+        {statusChips.map(c => (
+          <button
+            key={c.key}
+            onClick={() => setStatusFilter(c.key)}
+            className={
+              "chip tap-active flex-1 py-2.5 rounded-xl text-sm font-semibold border transition-colors " +
+              (statusFilter === c.key
+                ? "bg-brand-600 border-brand-600 text-white shadow-md shadow-brand-600/20"
+                : "bg-white border-brand-100 text-brand-700")
+            }
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
+        <button
+          onClick={() => setLivestockFilter("all")}
+          className={
+            "chip tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border " +
+            (livestockFilter === "all" ? "bg-brand-100 border-brand-300 text-brand-800" : "bg-white border-gray-200 text-gray-500")
+          }
+        >
+          축종 전체
+        </button>
+        {Object.entries(LIVESTOCK).map(([key, v]) => (
+          <button
+            key={key}
+            onClick={() => setLivestockFilter(key)}
+            className={
+              "chip tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border flex items-center gap-1 " +
+              (livestockFilter === key ? "bg-brand-100 border-brand-300 text-brand-800" : "bg-white border-gray-200 text-gray-500")
+            }
+          >
+            <span>{v.icon}</span>{v.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FarmCard({ farm, onClick }) {
+  const s = STATUS[farm.status];
+  const l = LIVESTOCK[farm.livestock];
+  return (
+    <button
+      onClick={onClick}
+      className={
+        "tap-active w-full text-left bg-white rounded-2xl p-4 shadow-sm shadow-gray-200 ring-1 " + s.ring +
+        " flex items-center gap-3 transition-transform"
+      }
+    >
+      <div className={"w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 " + s.bg}>
+        {l.icon}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <h3 className="font-bold text-gray-800 truncate">{farm.name}</h3>
+          {farm.todayVisit && (
+            <span className="shrink-0 text-[10px] font-bold text-brand-700 bg-brand-100 px-1.5 py-0.5 rounded-md">오늘 방문</span>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 mt-0.5">{l.label} · 마지막 방문 D-{farm.lastVisitDays}</p>
+      </div>
+
+      <div className="flex flex-col items-end gap-1 shrink-0">
+        <span className={"flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full " + s.bg + " " + s.text}>
+          <span className={"w-1.5 h-1.5 rounded-full " + s.dot}></span>
+          {s.label}
+        </span>
+        <span className="text-gray-300 text-lg leading-none">›</span>
+      </div>
+    </button>
+  );
+}
+
+function OrderChart({ orders }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    if (chartRef.current) chartRef.current.destroy();
+
+    chartRef.current = new Chart(canvasRef.current, {
+      type: "bar",
+      data: {
+        labels: MONTH_LABELS,
+        datasets: [{
+          label: "주문량 (톤)",
+          data: orders,
+          backgroundColor: "#2e8b52",
+          borderRadius: 8,
+          maxBarThickness: 42,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: "#eef3ee" }, ticks: { color: "#8a9a8f", font: { size: 11 } } },
+          x: { grid: { display: false }, ticks: { color: "#4a5a4f", font: { size: 12, weight: "600" } } },
+        },
+      },
+    });
+
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [orders]);
+
+  return <div className="h-40 mt-2"><canvas ref={canvasRef}></canvas></div>;
+}
+
+function FarmDetailModal({ farm, onClose }) {
+  const [memo, setMemo] = useState(farm.note);
+  const [saved, setSaved] = useState(false);
+  const s = STATUS[farm.status];
+  const l = LIVESTOCK[farm.livestock];
+
+  const handleSave = () => {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center modal-backdrop">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose}></div>
+
+      <div className="modal-sheet relative w-full max-w-[480px] bg-white rounded-t-3xl max-h-[88vh] overflow-y-auto shadow-2xl">
+        <div className="sticky top-0 bg-white pt-3 pb-2 px-5 border-b border-gray-100 rounded-t-3xl">
+          <div className="w-10 h-1.5 bg-gray-200 rounded-full mx-auto mb-3"></div>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className={"w-12 h-12 rounded-2xl flex items-center justify-center text-2xl " + s.bg}>{l.icon}</div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-800">{farm.name}</h2>
+                <span className={"inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full mt-1 " + s.bg + " " + s.text}>
+                  <span className={"w-1.5 h-1.5 rounded-full " + s.dot}></span>{s.label}
+                </span>
+              </div>
+            </div>
+            <button onClick={onClose} className="tap-active w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center text-lg">✕</button>
+          </div>
+        </div>
+
+        <div className="p-5 space-y-5">
+          <section className="grid grid-cols-2 gap-3">
+            <div className="bg-brand-50 rounded-xl p-3.5">
+              <p className="text-[11px] text-brand-600 font-semibold">농장주</p>
+              <p className="text-sm font-bold text-gray-800 mt-1">{farm.owner}</p>
+            </div>
+            <a href={"tel:" + farm.phone} className="tap-active bg-brand-600 rounded-xl p-3.5 text-white flex flex-col justify-between">
+              <p className="text-[11px] text-brand-100 font-semibold">연락처 · 통화하기 📞</p>
+              <p className="text-sm font-bold mt-1">{farm.phone}</p>
+            </a>
+          </section>
+
+          <section className="bg-gray-50 rounded-xl p-3.5">
+            <p className="text-[11px] text-gray-500 font-semibold">현재 사용 사료 제품</p>
+            <p className="text-sm font-bold text-gray-800 mt-1">{farm.product}</p>
+          </section>
+
+          <section>
+            <p className="text-sm font-bold text-gray-800 mb-1">최근 3개월 주문량 추이</p>
+            <div className="bg-white rounded-xl ring-1 ring-gray-100 p-3">
+              <OrderChart orders={farm.orders} />
+            </div>
+          </section>
+
+          <section>
+            <p className="text-sm font-bold text-gray-800 mb-1.5">특이사항 메모</p>
+            <textarea
+              value={memo}
+              onChange={e => setMemo(e.target.value)}
+              rows={3}
+              className="w-full text-sm rounded-xl border border-gray-200 p-3 focus:outline-none focus:ring-2 focus:ring-brand-300 resize-none text-gray-700"
+            />
+            <button
+              onClick={handleSave}
+              className="tap-active w-full mt-2 py-3 rounded-xl bg-brand-600 text-white font-bold text-sm shadow-md shadow-brand-600/20"
+            >
+              {saved ? "저장됨 ✓" : "메모 저장"}
+            </button>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="text-center py-16 text-gray-400">
+      <p className="text-4xl mb-2">🌿</p>
+      <p className="text-sm font-medium">조건에 맞는 농장이 없습니다.</p>
+    </div>
+  );
+}
+
+/* ------------------------- 메인 앱 ------------------------- */
+
+function App() {
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [livestockFilter, setLivestockFilter] = useState("all");
+  const [selectedFarm, setSelectedFarm] = useState(null);
+
+  const filteredFarms = useMemo(() => {
+    return FARMS.filter(f => {
+      if (statusFilter === "risk" && f.status === "normal") return false;
+      if (livestockFilter !== "all" && f.livestock !== livestockFilter) return false;
+      return true;
+    });
+  }, [statusFilter, livestockFilter]);
+
+  return (
+    <div className="pb-10">
+      <Header />
+      <FilterBar
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        livestockFilter={livestockFilter}
+        setLivestockFilter={setLivestockFilter}
+      />
+
+      <main className="px-4 mt-4 space-y-3">
+        {filteredFarms.length === 0
+          ? <EmptyState />
+          : filteredFarms.map(farm => (
+              <FarmCard key={farm.id} farm={farm} onClick={() => setSelectedFarm(farm)} />
+            ))}
+      </main>
+
+      {selectedFarm && (
+        <FarmDetailModal farm={selectedFarm} onClose={() => setSelectedFarm(null)} />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+<script>
+  var source = document.getElementById("app-source").textContent;
+  var transformed = Babel.transform(source, {
+    presets: [["react", { runtime: "classic" }]],
+    filename: "app.jsx",
+  }).code;
+  var scriptEl = document.createElement("script");
+  scriptEl.text = transformed;
+  document.body.appendChild(scriptEl);
+</script>
+</body>
+</html>
