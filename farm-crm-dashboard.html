@@ -12,7 +12,6 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
 
 <style>
@@ -155,63 +154,122 @@
 <body>
 <div id="root"></div>
 
-<script type="text/babel-source" id="app-source">
-const { useState, useEffect, useRef, useMemo } = React;
+<script>
+const {
+  useState,
+  useEffect,
+  useRef,
+  useMemo
+} = React;
 
 /* ------------------------- 상수 / 유틸 ------------------------- */
 
 const LIVESTOCK = {
-  hanwoo: { label: "한우", icon: "🐂" },
-  dairy:  { label: "낙농", icon: "🐄" },
-  pig:    { label: "양돈", icon: "🐖" },
-  poultry:{ label: "양계", icon: "🐔" },
+  hanwoo: {
+    label: "한우",
+    icon: "🐂"
+  },
+  dairy: {
+    label: "낙농",
+    icon: "🐄"
+  },
+  pig: {
+    label: "양돈",
+    icon: "🐖"
+  },
+  poultry: {
+    label: "양계",
+    icon: "🐔"
+  }
 };
 
 // c: 강조색(점/텍스트/스트라이프) 변수명, tint: 배경 변수명
 const STATUS = {
-  normal:  { label: "정상",      c: "--ok",     tint: "--ok-tint" },
-  caution: { label: "관심 필요",  c: "--warn",   tint: "--warn-tint" },
-  danger:  { label: "위험",      c: "--danger", tint: "--danger-tint" },
+  normal: {
+    label: "정상",
+    c: "--ok",
+    tint: "--ok-tint"
+  },
+  caution: {
+    label: "관심 필요",
+    c: "--warn",
+    tint: "--warn-tint"
+  },
+  danger: {
+    label: "위험",
+    c: "--danger",
+    tint: "--danger-tint"
+  }
 };
-
 const MONTH_TAG_LABELS = ["전전월", "전월", "이번달"];
-
 const STORAGE_KEYS = {
   farms: "farmCrm.farms.v1",
   clientId: "farmCrm.naverClientId.v1",
-  profile: "farmCrm.profile.v1",
+  profile: "farmCrm.profile.v1"
 };
-
-const cssVar = (name) => `var(${name})`;
+const cssVar = name => `var(${name})`;
 
 /* ------------------------- 아이콘 (인라인 SVG) ------------------------- */
 
-function Icon({ children, size = 18, className = "" }) {
-  return (
-    <svg
-      className={"icon " + className}
-      width={size} height={size} viewBox="0 0 24 24"
-      fill="none" stroke="currentColor" strokeWidth="2"
-      strokeLinecap="round" strokeLinejoin="round"
-    >
-      {children}
-    </svg>
-  );
+function Icon({
+  children,
+  size = 18,
+  className = ""
+}) {
+  return /*#__PURE__*/React.createElement("svg", {
+    className: "icon " + className,
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  }, children);
 }
-const GearIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></Icon>;
-const CloseIcon = (p) => <Icon {...p}><path d="M18 6 6 18M6 6l12 12" /></Icon>;
-const PlusIcon = (p) => <Icon {...p}><path d="M12 5v14M5 12h14" /></Icon>;
-const ChevronIcon = (p) => <Icon {...p}><path d="m9 18 6-6-6-6" /></Icon>;
-const PhoneIcon = (p) => <Icon {...p}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" /></Icon>;
-const PinIcon = (p) => <Icon {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" /><circle cx="12" cy="10" r="3" /></Icon>;
-const MapIcon = (p) => <Icon {...p}><path d="M3 6.5 9 4l6 2.5 6-2.5v13L15 19.5 9 17l-6 2.5Z" /><path d="M9 4v13M15 6.5v13" /></Icon>;
-const SproutIcon = (p) => <Icon {...p}><path d="M7 20h10M12 20v-7" /><path d="M12 13c0-3.5-2-5.5-6-6 0 4 1.5 6.5 6 6Z" /><path d="M12 10c0-3 1.8-5 5-6 0 3.5-1.3 6-5 6Z" /></Icon>;
-
+const GearIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "12",
+  r: "3"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+}));
+const CloseIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M18 6 6 18M6 6l12 12"
+}));
+const PlusIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M12 5v14M5 12h14"
+}));
+const ChevronIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "m9 18 6-6-6-6"
+}));
+const PhoneIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"
+}));
+const PinIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "10",
+  r: "3"
+}));
+const MapIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M3 6.5 9 4l6 2.5 6-2.5v13L15 19.5 9 17l-6 2.5Z"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M9 4v13M15 6.5v13"
+}));
+const SproutIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M7 20h10M12 20v-7"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M12 13c0-3.5-2-5.5-6-6 0 4 1.5 6.5 6 6Z"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M12 10c0-3 1.8-5 5-6 0 3.5-1.3 6-5 6Z"
+}));
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
-
 function daysSince(dateStr) {
   if (!dateStr) return null;
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -220,7 +278,6 @@ function daysSince(dateStr) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   return Math.round((today - then) / 86400000);
 }
-
 function loadJSON(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -229,11 +286,10 @@ function loadJSON(key, fallback) {
     return fallback;
   }
 }
-
 function saveJSON(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) { /* 저장 공간이 없거나 접근이 막힌 경우 조용히 무시 */ }
+  } catch (e) {/* 저장 공간이 없거나 접근이 막힌 경우 조용히 무시 */}
 }
 
 /* ---------------- 네이버 지도 로더 / 지오코딩 ---------------- */
@@ -242,33 +298,41 @@ function ensureNaverMaps(clientId) {
   if (!clientId) return Promise.reject(new Error("NO_KEY"));
   if (window.naver && window.naver.maps && window.naver.maps.Service) return Promise.resolve(window.naver.maps);
   if (window.__naverMapsPromise && window.__naverMapsClientId === clientId) return window.__naverMapsPromise;
-
   window.__naverMapsClientId = clientId;
   window.__naverMapsPromise = new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.src = "https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=" + encodeURIComponent(clientId) + "&submodules=geocoder";
     script.onload = () => {
-      if (window.naver && window.naver.maps) resolve(window.naver.maps);
-      else reject(new Error("SCRIPT_LOAD_FAILED"));
+      if (window.naver && window.naver.maps) resolve(window.naver.maps);else reject(new Error("SCRIPT_LOAD_FAILED"));
     };
     script.onerror = () => reject(new Error("SCRIPT_LOAD_FAILED"));
     document.head.appendChild(script);
   });
   return window.__naverMapsPromise;
 }
-
 function geocodeAddress(address) {
-  return new Promise((resolve) => {
-    if (!window.naver || !window.naver.maps || !window.naver.maps.Service) { resolve(null); return; }
-    window.naver.maps.Service.geocode({ query: address }, (status, response) => {
-      if (status !== window.naver.maps.Service.Status.OK) { resolve(null); return; }
+  return new Promise(resolve => {
+    if (!window.naver || !window.naver.maps || !window.naver.maps.Service) {
+      resolve(null);
+      return;
+    }
+    window.naver.maps.Service.geocode({
+      query: address
+    }, (status, response) => {
+      if (status !== window.naver.maps.Service.Status.OK) {
+        resolve(null);
+        return;
+      }
       const list = response.v2 && response.v2.addresses;
-      if (!list || list.length === 0) { resolve(null); return; }
+      if (!list || list.length === 0) {
+        resolve(null);
+        return;
+      }
       const item = list[0];
       resolve({
         lat: parseFloat(item.y),
         lng: parseFloat(item.x),
-        formatted: item.roadAddress || item.jibunAddress || address,
+        formatted: item.roadAddress || item.jibunAddress || address
       });
     });
   });
@@ -276,257 +340,320 @@ function geocodeAddress(address) {
 
 /* ------------------------- 서브 컴포넌트 ------------------------- */
 
-function StatusChip({ status }) {
+function StatusChip({
+  status
+}) {
   const s = STATUS[status];
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full"
-      style={{ background: cssVar(s.tint), color: cssVar(s.c) }}
-    >
-      <span className="w-1.5 h-1.5 rounded-full" style={{ background: cssVar(s.c) }}></span>
-      {s.label}
-    </span>
-  );
+  return /*#__PURE__*/React.createElement("span", {
+    className: "inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full",
+    style: {
+      background: cssVar(s.tint),
+      color: cssVar(s.c)
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full",
+    style: {
+      background: cssVar(s.c)
+    }
+  }), s.label);
 }
-
-function Header({ profile, todayCount, onOpenSettings }) {
-  return (
-    <header
-      className="text-white px-5 pt-7 pb-8 rounded-b-[28px]"
-      style={{ background: `linear-gradient(160deg, var(--brand-strong), var(--brand))` }}
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[11px] font-medium tracking-wide text-white/70">
-            {profile.region ? profile.region : "담당 구역 미설정 · 설정에서 입력"}
-          </p>
-          <h1 className="text-[22px] font-black mt-1">농장 순회 CRM</h1>
-        </div>
-        <button
-          onClick={onOpenSettings}
-          className="tap-active w-11 h-11 rounded-full bg-white/15 flex items-center justify-center ring-1 ring-white/25"
-          aria-label="설정"
-        >
-          <GearIcon size={19} />
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3 mt-6">
-        <div className="bg-white/10 rounded-2xl p-4">
-          <p className="text-[11px] text-white/70 font-medium tracking-wide">오늘 방문 예정</p>
-          <p className="font-mono text-[28px] font-semibold mt-1.5 leading-none">
-            {todayCount}<span className="text-sm font-medium ml-1 text-white/80">곳</span>
-          </p>
-        </div>
-        <div className="bg-white/10 rounded-2xl p-4">
-          <p className="text-[11px] text-white/70 font-medium tracking-wide">이번 달 목표 달성률</p>
-          <p className="font-mono text-[28px] font-semibold mt-1.5 leading-none">
-            {profile.targetRate}<span className="text-sm font-medium ml-1 text-white/80">%</span>
-          </p>
-          <div className="w-full h-1.5 bg-white/20 rounded-full mt-2.5 overflow-hidden">
-            <div className="h-full bg-white rounded-full" style={{ width: Math.min(100, Math.max(0, profile.targetRate)) + "%" }} />
-          </div>
-        </div>
-      </div>
-    </header>
-  );
+function Header({
+  profile,
+  todayCount,
+  onOpenSettings
+}) {
+  return /*#__PURE__*/React.createElement("header", {
+    className: "text-white px-5 pt-7 pb-8 rounded-b-[28px]",
+    style: {
+      background: `linear-gradient(160deg, var(--brand-strong), var(--brand))`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-medium tracking-wide text-white/70"
+  }, profile.region ? profile.region : "담당 구역 미설정 · 설정에서 입력"), /*#__PURE__*/React.createElement("h1", {
+    className: "text-[22px] font-black mt-1"
+  }, "농장 순회 CRM")), /*#__PURE__*/React.createElement("button", {
+    onClick: onOpenSettings,
+    className: "tap-active w-11 h-11 rounded-full bg-white/15 flex items-center justify-center ring-1 ring-white/25",
+    "aria-label": "설정"
+  }, /*#__PURE__*/React.createElement(GearIcon, {
+    size: 19
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3 mt-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-white/10 rounded-2xl p-4"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-white/70 font-medium tracking-wide"
+  }, "오늘 방문 예정"), /*#__PURE__*/React.createElement("p", {
+    className: "font-mono text-[28px] font-semibold mt-1.5 leading-none"
+  }, todayCount, /*#__PURE__*/React.createElement("span", {
+    className: "text-sm font-medium ml-1 text-white/80"
+  }, "곳"))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-white/10 rounded-2xl p-4"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-white/70 font-medium tracking-wide"
+  }, "이번 달 목표 달성률"), /*#__PURE__*/React.createElement("p", {
+    className: "font-mono text-[28px] font-semibold mt-1.5 leading-none"
+  }, profile.targetRate, /*#__PURE__*/React.createElement("span", {
+    className: "text-sm font-medium ml-1 text-white/80"
+  }, "%")), /*#__PURE__*/React.createElement("div", {
+    className: "w-full h-1.5 bg-white/20 rounded-full mt-2.5 overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "h-full bg-white rounded-full",
+    style: {
+      width: Math.min(100, Math.max(0, profile.targetRate)) + "%"
+    }
+  })))));
 }
-
-function ViewToggle({ view, setView }) {
-  const items = [
-    { key: "list", label: "목록" },
-    { key: "map", label: "지도" },
-  ];
-  return (
-    <div className="px-5 mt-5">
-      <div className="seg w-full">
-        {items.map(it => (
-          <button
-            key={it.key}
-            onClick={() => setView(it.key)}
-            className={"tap-active seg-btn flex-1" + (view === it.key ? " is-active" : "")}
-          >
-            {it.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+function ViewToggle({
+  view,
+  setView
+}) {
+  const items = [{
+    key: "list",
+    label: "목록"
+  }, {
+    key: "map",
+    label: "지도"
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "px-5 mt-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "seg w-full"
+  }, items.map(it => /*#__PURE__*/React.createElement("button", {
+    key: it.key,
+    onClick: () => setView(it.key),
+    className: "tap-active seg-btn flex-1" + (view === it.key ? " is-active" : "")
+  }, it.label))));
 }
-
-function FilterBar({ statusFilter, setStatusFilter, livestockFilter, setLivestockFilter }) {
-  const statusChips = [
-    { key: "all", label: "전체 보기" },
-    { key: "risk", label: "위험·관심만" },
-  ];
-  return (
-    <div className="px-5 mt-3 space-y-2.5">
-      <div className="seg w-full">
-        {statusChips.map(c => (
-          <button
-            key={c.key}
-            onClick={() => setStatusFilter(c.key)}
-            className={"tap-active seg-btn flex-1" + (statusFilter === c.key ? " is-active" : "")}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-5 px-5">
-        <button
-          onClick={() => setLivestockFilter("all")}
-          className="tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border"
-          style={livestockFilter === "all"
-            ? { background: cssVar("--brand-tint"), borderColor: cssVar("--brand"), color: cssVar("--brand") }
-            : { background: cssVar("--surface"), borderColor: cssVar("--border"), color: cssVar("--ink-faint") }}
-        >
-          축종 전체
-        </button>
-        {Object.entries(LIVESTOCK).map(([key, v]) => {
-          const active = livestockFilter === key;
-          return (
-            <button
-              key={key}
-              onClick={() => setLivestockFilter(key)}
-              className="tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border flex items-center gap-1"
-              style={active
-                ? { background: cssVar("--brand-tint"), borderColor: cssVar("--brand"), color: cssVar("--brand") }
-                : { background: cssVar("--surface"), borderColor: cssVar("--border"), color: cssVar("--ink-faint") }}
-            >
-              <span>{v.icon}</span>{v.label}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
+function FilterBar({
+  statusFilter,
+  setStatusFilter,
+  livestockFilter,
+  setLivestockFilter
+}) {
+  const statusChips = [{
+    key: "all",
+    label: "전체 보기"
+  }, {
+    key: "risk",
+    label: "위험·관심만"
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "px-5 mt-3 space-y-2.5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "seg w-full"
+  }, statusChips.map(c => /*#__PURE__*/React.createElement("button", {
+    key: c.key,
+    onClick: () => setStatusFilter(c.key),
+    className: "tap-active seg-btn flex-1" + (statusFilter === c.key ? " is-active" : "")
+  }, c.label))), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 overflow-x-auto pb-1 -mx-5 px-5"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setLivestockFilter("all"),
+    className: "tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border",
+    style: livestockFilter === "all" ? {
+      background: cssVar("--brand-tint"),
+      borderColor: cssVar("--brand"),
+      color: cssVar("--brand")
+    } : {
+      background: cssVar("--surface"),
+      borderColor: cssVar("--border"),
+      color: cssVar("--ink-faint")
+    }
+  }, "축종 전체"), Object.entries(LIVESTOCK).map(([key, v]) => {
+    const active = livestockFilter === key;
+    return /*#__PURE__*/React.createElement("button", {
+      key: key,
+      onClick: () => setLivestockFilter(key),
+      className: "tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border flex items-center gap-1",
+      style: active ? {
+        background: cssVar("--brand-tint"),
+        borderColor: cssVar("--brand"),
+        color: cssVar("--brand")
+      } : {
+        background: cssVar("--surface"),
+        borderColor: cssVar("--border"),
+        color: cssVar("--ink-faint")
+      }
+    }, /*#__PURE__*/React.createElement("span", null, v.icon), v.label);
+  })));
 }
-
-function FarmCard({ farm, onClick }) {
+function FarmCard({
+  farm,
+  onClick
+}) {
   const s = STATUS[farm.status];
   const l = LIVESTOCK[farm.livestock];
   const dSince = daysSince(farm.lastVisitDate);
-  return (
-    <button
-      onClick={onClick}
-      className="tap-active w-full text-left rounded-2xl pl-4 pr-3.5 py-4 flex items-center gap-3 border-l-4"
-      style={{
-        background: cssVar("--surface"),
-        borderLeftColor: cssVar(s.c),
-        boxShadow: `0 1px 2px rgba(var(--shadow), 0.04), 0 6px 16px -12px rgba(var(--shadow), 0.4)`,
-      }}
-    >
-      <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0" style={{ background: cssVar("--surface-2") }}>
-        {l.icon}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
-          <h3 className="font-bold truncate">{farm.name}</h3>
-          {farm.nextVisitDate === todayStr() && (
-            <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md tracking-wide" style={{ background: cssVar("--accent-tint"), color: cssVar("--accent") }}>
-              오늘 방문
-            </span>
-          )}
-        </div>
-        <p className="text-xs mt-0.5 font-mono truncate" style={{ color: cssVar("--ink-faint") }}>
-          {l.label} · {dSince === null ? "방문 기록 없음" : `마지막 방문 D-${dSince}`}
-        </p>
-        {farm.address && (
-          <p className="text-[11px] mt-0.5 truncate flex items-center gap-1" style={{ color: cssVar("--ink-faint") }}>
-            <PinIcon size={11} /> {farm.address}
-          </p>
-        )}
-      </div>
-
-      <div className="flex flex-col items-end gap-1.5 shrink-0">
-        <StatusChip status={farm.status} />
-        <ChevronIcon size={16} className="opacity-50" />
-      </div>
-    </button>
-  );
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onClick,
+    className: "tap-active w-full text-left rounded-2xl pl-4 pr-3.5 py-4 flex items-center gap-3 border-l-4",
+    style: {
+      background: cssVar("--surface"),
+      borderLeftColor: cssVar(s.c),
+      boxShadow: `0 1px 2px rgba(var(--shadow), 0.04), 0 6px 16px -12px rgba(var(--shadow), 0.4)`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, l.icon), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold truncate"
+  }, farm.name), farm.nextVisitDate === todayStr() && /*#__PURE__*/React.createElement("span", {
+    className: "shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md tracking-wide",
+    style: {
+      background: cssVar("--accent-tint"),
+      color: cssVar("--accent")
+    }
+  }, "오늘 방문")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mt-0.5 font-mono truncate",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, l.label, " · ", dSince === null ? "방문 기록 없음" : `마지막 방문 D-${dSince}`), farm.address && /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] mt-0.5 truncate flex items-center gap-1",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, /*#__PURE__*/React.createElement(PinIcon, {
+    size: 11
+  }), " ", farm.address)), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col items-end gap-1.5 shrink-0"
+  }, /*#__PURE__*/React.createElement(StatusChip, {
+    status: farm.status
+  }), /*#__PURE__*/React.createElement(ChevronIcon, {
+    size: 16,
+    className: "opacity-50"
+  })));
 }
-
-function OrderChart({ orders }) {
+function OrderChart({
+  orders
+}) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
   const hasData = orders.some(v => v > 0);
-
   useEffect(() => {
     if (!hasData || !canvasRef.current) return;
     if (chartRef.current) chartRef.current.destroy();
-
     const style = getComputedStyle(document.documentElement);
     const brand = style.getPropertyValue("--brand").trim();
     const ink = style.getPropertyValue("--ink-soft").trim();
     const grid = style.getPropertyValue("--border").trim();
-
     chartRef.current = new Chart(canvasRef.current, {
       type: "bar",
       data: {
         labels: MONTH_TAG_LABELS,
-        datasets: [{ label: "주문량 (톤)", data: orders, backgroundColor: brand, borderRadius: 8, maxBarThickness: 44 }],
+        datasets: [{
+          label: "주문량 (톤)",
+          data: orders,
+          backgroundColor: brand,
+          borderRadius: 8,
+          maxBarThickness: 44
+        }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: { beginAtZero: true, grid: { color: grid }, ticks: { color: ink, font: { size: 11, family: "'IBM Plex Mono', monospace" } } },
-          x: { grid: { display: false }, ticks: { color: ink, font: { size: 12, weight: "600", family: "'Noto Sans KR', sans-serif" } } },
+        plugins: {
+          legend: {
+            display: false
+          }
         },
-      },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: grid
+            },
+            ticks: {
+              color: ink,
+              font: {
+                size: 11,
+                family: "'IBM Plex Mono', monospace"
+              }
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: ink,
+              font: {
+                size: 12,
+                weight: "600",
+                family: "'Noto Sans KR', sans-serif"
+              }
+            }
+          }
+        }
+      }
     });
-
-    return () => { if (chartRef.current) chartRef.current.destroy(); };
+    return () => {
+      if (chartRef.current) chartRef.current.destroy();
+    };
   }, [orders, hasData]);
-
   if (!hasData) {
-    return (
-      <p className="text-xs py-8 text-center" style={{ color: cssVar("--ink-faint") }}>
-        최근 주문 데이터가 없습니다.
-      </p>
-    );
+    return /*#__PURE__*/React.createElement("p", {
+      className: "text-xs py-8 text-center",
+      style: {
+        color: cssVar("--ink-faint")
+      }
+    }, "최근 주문 데이터가 없습니다.");
   }
-  return <div className="h-40 mt-2"><canvas ref={canvasRef}></canvas></div>;
+  return /*#__PURE__*/React.createElement("div", {
+    className: "h-40 mt-2"
+  }, /*#__PURE__*/React.createElement("canvas", {
+    ref: canvasRef
+  }));
 }
 
 /* ---------------- 지도 뷰 ---------------- */
 
-function NaverMapView({ farms, clientId, onSelect }) {
+function NaverMapView({
+  farms,
+  clientId,
+  onSelect
+}) {
   const mapDivRef = useRef(null);
   const mapObjRef = useRef(null);
   const markersRef = useRef([]);
   const [mapState, setMapState] = useState(clientId ? "loading" : "no-key");
-
   useEffect(() => {
-    if (!clientId) { setMapState("no-key"); return; }
+    if (!clientId) {
+      setMapState("no-key");
+      return;
+    }
     let cancelled = false;
     setMapState("loading");
-    ensureNaverMaps(clientId)
-      .then((maps) => {
-        if (cancelled || !mapDivRef.current) return;
-        mapObjRef.current = new maps.Map(mapDivRef.current, {
-          center: new maps.LatLng(36.5, 127.8),
-          zoom: 7,
-        });
-        setMapState("ready");
-      })
-      .catch(() => { if (!cancelled) setMapState("error"); });
-    return () => { cancelled = true; };
+    ensureNaverMaps(clientId).then(maps => {
+      if (cancelled || !mapDivRef.current) return;
+      mapObjRef.current = new maps.Map(mapDivRef.current, {
+        center: new maps.LatLng(36.5, 127.8),
+        zoom: 7
+      });
+      setMapState("ready");
+    }).catch(() => {
+      if (!cancelled) setMapState("error");
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [clientId]);
-
   useEffect(() => {
     if (mapState !== "ready" || !window.naver || !mapObjRef.current) return;
     const maps = window.naver.maps;
-
     markersRef.current.forEach(m => m.setMap(null));
     markersRef.current = [];
-
     const located = farms.filter(f => typeof f.lat === "number" && typeof f.lng === "number");
     const style = getComputedStyle(document.documentElement);
-
     located.forEach(farm => {
       const color = style.getPropertyValue(STATUS[farm.status].c).trim();
       const marker = new maps.Marker({
@@ -534,381 +661,623 @@ function NaverMapView({ farms, clientId, onSelect }) {
         map: mapObjRef.current,
         icon: {
           content: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
-          anchor: new maps.Point(8, 8),
+          anchor: new maps.Point(8, 8)
         },
-        title: farm.name,
+        title: farm.name
       });
       maps.Event.addListener(marker, "click", () => onSelect(farm));
       markersRef.current.push(marker);
     });
-
     if (located.length > 0) {
       const bounds = new maps.LatLngBounds(new maps.LatLng(located[0].lat, located[0].lng), new maps.LatLng(located[0].lat, located[0].lng));
       located.forEach(f => bounds.extend(new maps.LatLng(f.lat, f.lng)));
-      mapObjRef.current.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
+      mapObjRef.current.fitBounds(bounds, {
+        top: 40,
+        right: 40,
+        bottom: 40,
+        left: 40
+      });
     }
   }, [farms, mapState]);
-
   if (mapState === "no-key") {
-    return (
-      <div className="mx-5 mt-4 rounded-2xl border p-6 text-center" style={{ borderColor: cssVar("--border"), background: cssVar("--surface-2") }}>
-        <div className="w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3" style={{ background: cssVar("--brand-tint"), color: cssVar("--brand") }}>
-          <MapIcon size={20} />
-        </div>
-        <p className="text-sm font-semibold">네이버 지도 API 키가 설정되지 않았어요</p>
-        <p className="text-xs mt-1.5" style={{ color: cssVar("--ink-soft") }}>
-          우측 상단 설정(프로필 아이콘)에서 네이버 지도 Client ID를 등록하면<br />농장 주소가 실제 지도에 표시됩니다.
-        </p>
-      </div>
-    );
+    return /*#__PURE__*/React.createElement("div", {
+      className: "mx-5 mt-4 rounded-2xl border p-6 text-center",
+      style: {
+        borderColor: cssVar("--border"),
+        background: cssVar("--surface-2")
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3",
+      style: {
+        background: cssVar("--brand-tint"),
+        color: cssVar("--brand")
+      }
+    }, /*#__PURE__*/React.createElement(MapIcon, {
+      size: 20
+    })), /*#__PURE__*/React.createElement("p", {
+      className: "text-sm font-semibold"
+    }, "네이버 지도 API 키가 설정되지 않았어요"), /*#__PURE__*/React.createElement("p", {
+      className: "text-xs mt-1.5",
+      style: {
+        color: cssVar("--ink-soft")
+      }
+    }, "우측 상단 설정(프로필 아이콘)에서 네이버 지도 Client ID를 등록하면", /*#__PURE__*/React.createElement("br", null), "농장 주소가 실제 지도에 표시됩니다."));
   }
   if (mapState === "error") {
-    return (
-      <div className="mx-5 mt-4 rounded-2xl border p-5 text-center" style={{ borderColor: cssVar("--danger"), background: cssVar("--danger-tint") }}>
-        <p className="text-sm font-semibold" style={{ color: cssVar("--danger") }}>지도를 불러오지 못했습니다</p>
-        <p className="text-xs mt-1.5" style={{ color: cssVar("--ink-soft") }}>
-          Client ID가 올바른지, 그리고 네이버 클라우드 콘솔에 현재 접속 주소가<br />허용된 Web 서비스 URL로 등록되어 있는지 확인해 주세요.
-        </p>
-      </div>
-    );
+    return /*#__PURE__*/React.createElement("div", {
+      className: "mx-5 mt-4 rounded-2xl border p-5 text-center",
+      style: {
+        borderColor: cssVar("--danger"),
+        background: cssVar("--danger-tint")
+      }
+    }, /*#__PURE__*/React.createElement("p", {
+      className: "text-sm font-semibold",
+      style: {
+        color: cssVar("--danger")
+      }
+    }, "지도를 불러오지 못했습니다"), /*#__PURE__*/React.createElement("p", {
+      className: "text-xs mt-1.5",
+      style: {
+        color: cssVar("--ink-soft")
+      }
+    }, "Client ID가 올바른지, 그리고 네이버 클라우드 콘솔에 현재 접속 주소가", /*#__PURE__*/React.createElement("br", null), "허용된 Web 서비스 URL로 등록되어 있는지 확인해 주세요."));
   }
-
-  return (
-    <div className="px-5 mt-4">
-      <div ref={mapDivRef} className="w-full h-[320px] rounded-2xl border overflow-hidden" style={{ borderColor: cssVar("--border") }}>
-        {mapState === "loading" && (
-          <div className="w-full h-full flex items-center justify-center text-sm" style={{ color: cssVar("--ink-faint") }}>
-            지도를 불러오는 중...
-          </div>
-        )}
-      </div>
-      <div className="flex items-center gap-4 mt-3 px-1 text-xs" style={{ color: cssVar("--ink-soft") }}>
-        {Object.entries(STATUS).map(([key, s]) => (
-          <span key={key} className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full" style={{ background: cssVar(s.c) }}></span>{s.label}
-          </span>
-        ))}
-      </div>
-      {farms.length > 0 && farms.every(f => typeof f.lat !== "number") && (
-        <p className="text-xs mt-3 text-center" style={{ color: cssVar("--ink-faint") }}>
-          등록된 농장의 좌표를 찾지 못했습니다. 주소를 다시 확인해 주세요.
-        </p>
-      )}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "px-5 mt-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    ref: mapDivRef,
+    className: "w-full h-[320px] rounded-2xl border overflow-hidden",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, mapState === "loading" && /*#__PURE__*/React.createElement("div", {
+    className: "w-full h-full flex items-center justify-center text-sm",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "지도를 불러오는 중...")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-4 mt-3 px-1 text-xs",
+    style: {
+      color: cssVar("--ink-soft")
+    }
+  }, Object.entries(STATUS).map(([key, s]) => /*#__PURE__*/React.createElement("span", {
+    key: key,
+    className: "flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-2 h-2 rounded-full",
+    style: {
+      background: cssVar(s.c)
+    }
+  }), s.label))), farms.length > 0 && farms.every(f => typeof f.lat !== "number") && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mt-3 text-center",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "등록된 농장의 좌표를 찾지 못했습니다. 주소를 다시 확인해 주세요."));
 }
 
 /* ---------------- 농장 등록 / 수정 폼 ---------------- */
 
 function emptyFarmDraft() {
   return {
-    name: "", livestock: "hanwoo", status: "normal", owner: "", phone: "",
-    address: "", product: "", orders: [0, 0, 0], lastVisitDate: "", nextVisitDate: "", note: "",
+    name: "",
+    livestock: "hanwoo",
+    status: "normal",
+    owner: "",
+    phone: "",
+    address: "",
+    product: "",
+    orders: [0, 0, 0],
+    lastVisitDate: "",
+    nextVisitDate: "",
+    note: ""
   };
 }
-
-function FarmFormModal({ initialFarm, clientId, onCancel, onSubmit }) {
+function FarmFormModal({
+  initialFarm,
+  clientId,
+  onCancel,
+  onSubmit
+}) {
   const isEdit = !!initialFarm;
-  const [draft, setDraft] = useState(() => initialFarm ? { ...emptyFarmDraft(), ...initialFarm } : emptyFarmDraft());
+  const [draft, setDraft] = useState(() => initialFarm ? {
+    ...emptyFarmDraft(),
+    ...initialFarm
+  } : emptyFarmDraft());
   const [saving, setSaving] = useState(false);
   const [geoNote, setGeoNote] = useState("");
-
-  const setField = (key, value) => setDraft(d => ({ ...d, [key]: value }));
+  const setField = (key, value) => setDraft(d => ({
+    ...d,
+    [key]: value
+  }));
   const setOrder = (idx, value) => setDraft(d => {
     const orders = [...d.orders];
     orders[idx] = Number(value) || 0;
-    return { ...d, orders };
+    return {
+      ...d,
+      orders
+    };
   });
-
-  const handleSubmit = async (e) => {
+  const handleSubmit = async e => {
     e.preventDefault();
     if (!draft.name.trim() || !draft.address.trim()) return;
     setSaving(true);
     setGeoNote("");
-
     let lat = isEdit ? initialFarm.lat : undefined;
     let lng = isEdit ? initialFarm.lng : undefined;
     const addressChanged = !isEdit || initialFarm.address !== draft.address;
-
     if (addressChanged) {
-      lat = undefined; lng = undefined;
+      lat = undefined;
+      lng = undefined;
       try {
         await ensureNaverMaps(clientId);
         const geo = await geocodeAddress(draft.address);
-        if (geo) { lat = geo.lat; lng = geo.lng; }
-        else setGeoNote("주소를 찾지 못했어요. 저장은 되지만 지도에는 표시되지 않아요.");
+        if (geo) {
+          lat = geo.lat;
+          lng = geo.lng;
+        } else setGeoNote("주소를 찾지 못했어요. 저장은 되지만 지도에는 표시되지 않아요.");
       } catch (err) {
         setGeoNote("지도 API 키가 설정되지 않아 좌표를 확인하지 못했어요. 설정에서 키를 등록해 보세요.");
       }
     }
-
     const farm = {
       ...draft,
-      id: isEdit ? initialFarm.id : (Date.now() + "-" + Math.random().toString(36).slice(2, 7)),
-      lat, lng,
+      id: isEdit ? initialFarm.id : Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+      lat,
+      lng
     };
     setSaving(false);
     onSubmit(farm);
   };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center modal-backdrop">
-      <div className="absolute inset-0 bg-black/45" onClick={onCancel}></div>
-      <div className="modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[92vh] overflow-y-auto" style={{ background: cssVar("--surface") }}>
-        <div className="sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between" style={{ background: cssVar("--surface"), borderColor: cssVar("--border") }}>
-          <h2 className="text-base font-bold">{isEdit ? "농장 정보 수정" : "새 농장 등록"}</h2>
-          <button onClick={onCancel} className="tap-active w-9 h-9 rounded-full flex items-center justify-center" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}><CloseIcon size={16} /></button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          <div>
-            <label className="field-label">농장명 *</label>
-            <input className="field" required value={draft.name} onChange={e => setField("name", e.target.value)} placeholder="예: 한라농장" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="field-label">사육 축종</label>
-              <select className="field" value={draft.livestock} onChange={e => setField("livestock", e.target.value)}>
-                {Object.entries(LIVESTOCK).map(([k, v]) => <option key={k} value={k}>{v.icon} {v.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="field-label">상태</label>
-              <select className="field" value={draft.status} onChange={e => setField("status", e.target.value)}>
-                {Object.entries(STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="field-label">농장주</label>
-              <input className="field" value={draft.owner} onChange={e => setField("owner", e.target.value)} placeholder="이름" />
-            </div>
-            <div>
-              <label className="field-label">연락처</label>
-              <input className="field" value={draft.phone} onChange={e => setField("phone", e.target.value)} placeholder="010-0000-0000" />
-            </div>
-          </div>
-
-          <div>
-            <label className="field-label">주소 *</label>
-            <input className="field" required value={draft.address} onChange={e => setField("address", e.target.value)} placeholder="예: 제주특별자치도 제주시 ○○로 123" />
-            <p className="text-[11px] mt-1.5" style={{ color: cssVar("--ink-faint") }}>저장하면 자동으로 지도 좌표를 찾아 지도 탭에 표시돼요.</p>
-          </div>
-
-          <div>
-            <label className="field-label">현재 사용 사료 제품</label>
-            <input className="field" value={draft.product} onChange={e => setField("product", e.target.value)} placeholder="예: 한우비육사료 A+" />
-          </div>
-
-          <div>
-            <label className="field-label">최근 3개월 주문량 (톤)</label>
-            <div className="grid grid-cols-3 gap-2">
-              {MONTH_TAG_LABELS.map((label, idx) => (
-                <div key={label}>
-                  <input type="number" min="0" className="field text-center font-mono" value={draft.orders[idx]} onChange={e => setOrder(idx, e.target.value)} />
-                  <p className="text-[10px] text-center mt-1" style={{ color: cssVar("--ink-faint") }}>{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="field-label">마지막 방문일</label>
-              <input type="date" className="field" value={draft.lastVisitDate} onChange={e => setField("lastVisitDate", e.target.value)} />
-            </div>
-            <div>
-              <label className="field-label">다음 방문 예정일</label>
-              <input type="date" className="field" value={draft.nextVisitDate} onChange={e => setField("nextVisitDate", e.target.value)} />
-            </div>
-          </div>
-
-          <div>
-            <label className="field-label">특이사항 메모</label>
-            <textarea className="field resize-none" rows={3} value={draft.note} onChange={e => setField("note", e.target.value)} placeholder="예: 최근 폭염으로 섭취량 저하 호소" />
-          </div>
-
-          {geoNote && (
-            <p className="text-xs rounded-lg p-2.5" style={{ background: cssVar("--warn-tint"), color: cssVar("--warn") }}>{geoNote}</p>
-          )}
-
-          <button type="submit" disabled={saving} className="tap-active w-full py-3.5 rounded-xl text-white font-bold text-sm disabled:opacity-60" style={{ background: cssVar("--brand") }}>
-            {saving ? "좌표 확인 중..." : isEdit ? "수정 완료" : "농장 등록"}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-end justify-center modal-backdrop"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 bg-black/45",
+    onClick: onCancel
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[92vh] overflow-y-auto",
+    style: {
+      background: cssVar("--surface")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between",
+    style: {
+      background: cssVar("--surface"),
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-base font-bold"
+  }, isEdit ? "농장 정보 수정" : "새 농장 등록"), /*#__PURE__*/React.createElement("button", {
+    onClick: onCancel,
+    className: "tap-active w-9 h-9 rounded-full flex items-center justify-center",
+    style: {
+      background: cssVar("--surface-2"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement(CloseIcon, {
+    size: 16
+  }))), /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleSubmit,
+    className: "p-5 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "농장명 *"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    required: true,
+    value: draft.name,
+    onChange: e => setField("name", e.target.value),
+    placeholder: "예: 한라농장"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "사육 축종"), /*#__PURE__*/React.createElement("select", {
+    className: "field",
+    value: draft.livestock,
+    onChange: e => setField("livestock", e.target.value)
+  }, Object.entries(LIVESTOCK).map(([k, v]) => /*#__PURE__*/React.createElement("option", {
+    key: k,
+    value: k
+  }, v.icon, " ", v.label)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "상태"), /*#__PURE__*/React.createElement("select", {
+    className: "field",
+    value: draft.status,
+    onChange: e => setField("status", e.target.value)
+  }, Object.entries(STATUS).map(([k, v]) => /*#__PURE__*/React.createElement("option", {
+    key: k,
+    value: k
+  }, v.label))))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "농장주"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: draft.owner,
+    onChange: e => setField("owner", e.target.value),
+    placeholder: "이름"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "연락처"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: draft.phone,
+    onChange: e => setField("phone", e.target.value),
+    placeholder: "010-0000-0000"
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "주소 *"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    required: true,
+    value: draft.address,
+    onChange: e => setField("address", e.target.value),
+    placeholder: "예: 제주특별자치도 제주시 ○○로 123"
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] mt-1.5",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "저장하면 자동으로 지도 좌표를 찾아 지도 탭에 표시돼요.")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "현재 사용 사료 제품"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: draft.product,
+    onChange: e => setField("product", e.target.value),
+    placeholder: "예: 한우비육사료 A+"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "최근 3개월 주문량 (톤)"), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-3 gap-2"
+  }, MONTH_TAG_LABELS.map((label, idx) => /*#__PURE__*/React.createElement("div", {
+    key: label
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    className: "field text-center font-mono",
+    value: draft.orders[idx],
+    onChange: e => setOrder(idx, e.target.value)
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-[10px] text-center mt-1",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, label))))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "마지막 방문일"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    className: "field",
+    value: draft.lastVisitDate,
+    onChange: e => setField("lastVisitDate", e.target.value)
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "다음 방문 예정일"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    className: "field",
+    value: draft.nextVisitDate,
+    onChange: e => setField("nextVisitDate", e.target.value)
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "특이사항 메모"), /*#__PURE__*/React.createElement("textarea", {
+    className: "field resize-none",
+    rows: 3,
+    value: draft.note,
+    onChange: e => setField("note", e.target.value),
+    placeholder: "예: 최근 폭염으로 섭취량 저하 호소"
+  })), geoNote && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs rounded-lg p-2.5",
+    style: {
+      background: cssVar("--warn-tint"),
+      color: cssVar("--warn")
+    }
+  }, geoNote), /*#__PURE__*/React.createElement("button", {
+    type: "submit",
+    disabled: saving,
+    className: "tap-active w-full py-3.5 rounded-xl text-white font-bold text-sm disabled:opacity-60",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, saving ? "좌표 확인 중..." : isEdit ? "수정 완료" : "농장 등록"))));
 }
 
 /* ---------------- 농장 상세 모달 ---------------- */
 
-function FarmDetailModal({ farm, onClose, onEdit, onDelete }) {
+function FarmDetailModal({
+  farm,
+  onClose,
+  onEdit,
+  onDelete
+}) {
   const l = LIVESTOCK[farm.livestock];
-
   const handleDelete = () => {
     if (window.confirm(`${farm.name} 정보를 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) onDelete(farm.id);
   };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center modal-backdrop">
-      <div className="absolute inset-0 bg-black/45" onClick={onClose}></div>
-      <div className="modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[88vh] overflow-y-auto" style={{ background: cssVar("--surface"), boxShadow: "0 -12px 40px -12px rgba(0,0,0,0.35)" }}>
-        <div className="sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b" style={{ background: cssVar("--surface"), borderColor: cssVar("--border") }}>
-          <div className="w-10 h-1.5 rounded-full mx-auto mb-3" style={{ background: cssVar("--border") }}></div>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ background: cssVar("--surface-2") }}>{l.icon}</div>
-              <div>
-                <h2 className="text-lg font-bold">{farm.name}</h2>
-                <div className="mt-1"><StatusChip status={farm.status} /></div>
-              </div>
-            </div>
-            <button onClick={onClose} className="tap-active w-9 h-9 rounded-full flex items-center justify-center" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}><CloseIcon size={16} /></button>
-          </div>
-        </div>
-
-        <div className="p-5 space-y-5">
-          <section className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl p-3.5" style={{ background: cssVar("--surface-2") }}>
-              <p className="text-[11px] font-semibold tracking-wide" style={{ color: cssVar("--ink-faint") }}>농장주</p>
-              <p className="text-sm font-bold mt-1">{farm.owner || "미입력"}</p>
-            </div>
-            {farm.phone ? (
-              <a href={"tel:" + farm.phone} className="tap-active rounded-xl p-3.5 text-white flex flex-col justify-between" style={{ background: cssVar("--brand") }}>
-                <p className="text-[11px] font-semibold tracking-wide text-white/75 flex items-center gap-1">
-                  <PhoneIcon size={12} /> 연락처 · 통화하기
-                </p>
-                <p className="text-sm font-bold mt-1 font-mono">{farm.phone}</p>
-              </a>
-            ) : (
-              <div className="rounded-xl p-3.5" style={{ background: cssVar("--surface-2") }}>
-                <p className="text-[11px] font-semibold tracking-wide" style={{ color: cssVar("--ink-faint") }}>연락처</p>
-                <p className="text-sm font-bold mt-1">미입력</p>
-              </div>
-            )}
-          </section>
-
-          <section className="rounded-xl p-3.5" style={{ background: cssVar("--surface-2") }}>
-            <p className="text-[11px] font-semibold tracking-wide" style={{ color: cssVar("--ink-faint") }}>주소</p>
-            <p className="text-sm font-bold mt-1">{farm.address}</p>
-            {typeof farm.lat !== "number" && (
-              <p className="text-[11px] mt-1" style={{ color: cssVar("--warn") }}>지도 좌표 없음 — 지도 탭에는 표시되지 않아요.</p>
-            )}
-          </section>
-
-          <section className="rounded-xl p-3.5" style={{ background: cssVar("--surface-2") }}>
-            <p className="text-[11px] font-semibold tracking-wide" style={{ color: cssVar("--ink-faint") }}>현재 사용 사료 제품</p>
-            <p className="text-sm font-bold mt-1">{farm.product || "미입력"}</p>
-          </section>
-
-          <section>
-            <p className="text-sm font-bold mb-1.5">최근 3개월 주문량 추이</p>
-            <div className="rounded-xl p-3 border" style={{ borderColor: cssVar("--border") }}>
-              <OrderChart orders={farm.orders} />
-            </div>
-          </section>
-
-          <section>
-            <p className="text-sm font-bold mb-1.5">특이사항 메모</p>
-            <p className="text-sm rounded-xl p-3.5 whitespace-pre-wrap" style={{ background: cssVar("--surface-2"), color: farm.note ? cssVar("--ink") : cssVar("--ink-faint") }}>
-              {farm.note || "메모가 없습니다."}
-            </p>
-          </section>
-
-          <section className="flex gap-2 pt-1">
-            <button onClick={() => onEdit(farm)} className="tap-active flex-1 py-3 rounded-xl font-bold text-sm border" style={{ borderColor: cssVar("--border"), color: cssVar("--ink") }}>
-              정보 수정
-            </button>
-            <button onClick={handleDelete} className="tap-active flex-1 py-3 rounded-xl font-bold text-sm" style={{ background: cssVar("--danger-tint"), color: cssVar("--danger") }}>
-              삭제
-            </button>
-          </section>
-        </div>
-      </div>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-end justify-center modal-backdrop"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 bg-black/45",
+    onClick: onClose
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[88vh] overflow-y-auto",
+    style: {
+      background: cssVar("--surface"),
+      boxShadow: "0 -12px 40px -12px rgba(0,0,0,0.35)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b",
+    style: {
+      background: cssVar("--surface"),
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-10 h-1.5 rounded-full mx-auto mb-3",
+    style: {
+      background: cssVar("--border")
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-12 h-12 rounded-2xl flex items-center justify-center text-2xl",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, l.icon), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
+    className: "text-lg font-bold"
+  }, farm.name), /*#__PURE__*/React.createElement("div", {
+    className: "mt-1"
+  }, /*#__PURE__*/React.createElement(StatusChip, {
+    status: farm.status
+  })))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "tap-active w-9 h-9 rounded-full flex items-center justify-center",
+    style: {
+      background: cssVar("--surface-2"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement(CloseIcon, {
+    size: 16
+  })))), /*#__PURE__*/React.createElement("div", {
+    className: "p-5 space-y-5"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "rounded-xl p-3.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "농장주"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1"
+  }, farm.owner || "미입력")), farm.phone ? /*#__PURE__*/React.createElement("a", {
+    href: "tel:" + farm.phone,
+    className: "tap-active rounded-xl p-3.5 text-white flex flex-col justify-between",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide text-white/75 flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(PhoneIcon, {
+    size: 12
+  }), " 연락처 · 통화하기"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1 font-mono"
+  }, farm.phone)) : /*#__PURE__*/React.createElement("div", {
+    className: "rounded-xl p-3.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "연락처"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1"
+  }, "미입력"))), /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl p-3.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "주소"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1"
+  }, farm.address), typeof farm.lat !== "number" && /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] mt-1",
+    style: {
+      color: cssVar("--warn")
+    }
+  }, "지도 좌표 없음 — 지도 탭에는 표시되지 않아요.")), /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl p-3.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "현재 사용 사료 제품"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1"
+  }, farm.product || "미입력")), /*#__PURE__*/React.createElement("section", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mb-1.5"
+  }, "최근 3개월 주문량 추이"), /*#__PURE__*/React.createElement("div", {
+    className: "rounded-xl p-3 border",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement(OrderChart, {
+    orders: farm.orders
+  }))), /*#__PURE__*/React.createElement("section", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mb-1.5"
+  }, "특이사항 메모"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm rounded-xl p-3.5 whitespace-pre-wrap",
+    style: {
+      background: cssVar("--surface-2"),
+      color: farm.note ? cssVar("--ink") : cssVar("--ink-faint")
+    }
+  }, farm.note || "메모가 없습니다.")), /*#__PURE__*/React.createElement("section", {
+    className: "flex gap-2 pt-1"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onEdit(farm),
+    className: "tap-active flex-1 py-3 rounded-xl font-bold text-sm border",
+    style: {
+      borderColor: cssVar("--border"),
+      color: cssVar("--ink")
+    }
+  }, "정보 수정"), /*#__PURE__*/React.createElement("button", {
+    onClick: handleDelete,
+    className: "tap-active flex-1 py-3 rounded-xl font-bold text-sm",
+    style: {
+      background: cssVar("--danger-tint"),
+      color: cssVar("--danger")
+    }
+  }, "삭제")))));
 }
 
 /* ---------------- 설정 모달 ---------------- */
 
-function SettingsModal({ profile, clientId, onClose, onSaveProfile, onSaveClientId, onResetAll }) {
+function SettingsModal({
+  profile,
+  clientId,
+  onClose,
+  onSaveProfile,
+  onSaveClientId,
+  onResetAll
+}) {
   const [name, setName] = useState(profile.name);
   const [region, setRegion] = useState(profile.region);
   const [targetRate, setTargetRate] = useState(profile.targetRate);
   const [keyInput, setKeyInput] = useState(clientId);
-
-  const handleSaveProfile = () => onSaveProfile({ name, region, targetRate: Number(targetRate) || 0 });
+  const handleSaveProfile = () => onSaveProfile({
+    name,
+    region,
+    targetRate: Number(targetRate) || 0
+  });
   const handleSaveKey = () => onSaveClientId(keyInput.trim());
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center modal-backdrop">
-      <div className="absolute inset-0 bg-black/45" onClick={onClose}></div>
-      <div className="modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[90vh] overflow-y-auto" style={{ background: cssVar("--surface") }}>
-        <div className="sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between" style={{ background: cssVar("--surface"), borderColor: cssVar("--border") }}>
-          <h2 className="text-base font-bold">설정</h2>
-          <button onClick={onClose} className="tap-active w-9 h-9 rounded-full flex items-center justify-center" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}><CloseIcon size={16} /></button>
-        </div>
-
-        <div className="p-5 space-y-6">
-          <section className="space-y-3">
-            <h3 className="text-sm font-bold">담당자 정보</h3>
-            <div>
-              <label className="field-label">담당자 이름</label>
-              <input className="field" value={name} onChange={e => setName(e.target.value)} placeholder="예: 박영업" />
-            </div>
-            <div>
-              <label className="field-label">담당 구역</label>
-              <input className="field" value={region} onChange={e => setRegion(e.target.value)} placeholder="예: 영업 담당구역 · 남부권역" />
-            </div>
-            <div>
-              <label className="field-label">이번 달 목표 달성률 (%)</label>
-              <input type="number" min="0" max="999" className="field font-mono" value={targetRate} onChange={e => setTargetRate(e.target.value)} />
-            </div>
-            <button onClick={handleSaveProfile} className="tap-active w-full py-2.5 rounded-xl text-white font-bold text-sm" style={{ background: cssVar("--brand") }}>
-              담당자 정보 저장
-            </button>
-          </section>
-
-          <section className="space-y-3 pt-2 border-t" style={{ borderColor: cssVar("--border") }}>
-            <h3 className="text-sm font-bold">네이버 지도 연동</h3>
-            <div>
-              <label className="field-label">네이버 지도 Client ID (ncpClientId)</label>
-              <input className="field font-mono" value={keyInput} onChange={e => setKeyInput(e.target.value)} placeholder="예: abcd1234ef" />
-            </div>
-            <button onClick={handleSaveKey} className="tap-active w-full py-2.5 rounded-xl font-bold text-sm border" style={{ borderColor: cssVar("--brand"), color: cssVar("--brand") }}>
-              키 저장 (저장 후 새로고침됩니다)
-            </button>
-            <div className="text-[11px] leading-relaxed rounded-xl p-3" style={{ background: cssVar("--surface-2"), color: cssVar("--ink-soft") }}>
-              <p className="font-semibold mb-1" style={{ color: cssVar("--ink") }}>키 발급 방법</p>
-              <ol className="list-decimal list-inside space-y-0.5">
-                <li>console.ncloud.com 에서 네이버 클라우드 플랫폼 계정으로 로그인</li>
-                <li>AI·NAVER API → Application 등록 → "Maps" 선택</li>
-                <li>Web Dynamic Map, Geocoding 서비스 체크</li>
-                <li>Web 서비스 URL에 현재 접속 주소(예: http://localhost:8000) 등록</li>
-                <li>발급된 Client ID를 위 입력창에 붙여넣기</li>
-              </ol>
-              <p className="mt-1.5">※ 콘솔 화면 구성은 업데이트에 따라 달라질 수 있어요.</p>
-            </div>
-          </section>
-
-          <section className="space-y-2 pt-2 border-t" style={{ borderColor: cssVar("--border") }}>
-            <h3 className="text-sm font-bold">데이터 관리</h3>
-            <button
-              onClick={() => { if (window.confirm("등록된 모든 농장 데이터를 삭제할까요?")) onResetAll(); }}
-              className="tap-active w-full py-2.5 rounded-xl font-bold text-sm"
-              style={{ background: cssVar("--danger-tint"), color: cssVar("--danger") }}
-            >
-              전체 농장 데이터 초기화
-            </button>
-          </section>
-        </div>
-      </div>
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-end justify-center modal-backdrop"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 bg-black/45",
+    onClick: onClose
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[90vh] overflow-y-auto",
+    style: {
+      background: cssVar("--surface")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between",
+    style: {
+      background: cssVar("--surface"),
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-base font-bold"
+  }, "설정"), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "tap-active w-9 h-9 rounded-full flex items-center justify-center",
+    style: {
+      background: cssVar("--surface-2"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement(CloseIcon, {
+    size: 16
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "p-5 space-y-6"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: "space-y-3"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-sm font-bold"
+  }, "담당자 정보"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "담당자 이름"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: name,
+    onChange: e => setName(e.target.value),
+    placeholder: "예: 박영업"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "담당 구역"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: region,
+    onChange: e => setRegion(e.target.value),
+    placeholder: "예: 영업 담당구역 · 남부권역"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "이번 달 목표 달성률 (%)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    max: "999",
+    className: "field font-mono",
+    value: targetRate,
+    onChange: e => setTargetRate(e.target.value)
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: handleSaveProfile,
+    className: "tap-active w-full py-2.5 rounded-xl text-white font-bold text-sm",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, "담당자 정보 저장")), /*#__PURE__*/React.createElement("section", {
+    className: "space-y-3 pt-2 border-t",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-sm font-bold"
+  }, "네이버 지도 연동"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "네이버 지도 Client ID (ncpClientId)"), /*#__PURE__*/React.createElement("input", {
+    className: "field font-mono",
+    value: keyInput,
+    onChange: e => setKeyInput(e.target.value),
+    placeholder: "예: abcd1234ef"
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: handleSaveKey,
+    className: "tap-active w-full py-2.5 rounded-xl font-bold text-sm border",
+    style: {
+      borderColor: cssVar("--brand"),
+      color: cssVar("--brand")
+    }
+  }, "키 저장 (저장 후 새로고침됩니다)"), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] leading-relaxed rounded-xl p-3",
+    style: {
+      background: cssVar("--surface-2"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "font-semibold mb-1",
+    style: {
+      color: cssVar("--ink")
+    }
+  }, "키 발급 방법"), /*#__PURE__*/React.createElement("ol", {
+    className: "list-decimal list-inside space-y-0.5"
+  }, /*#__PURE__*/React.createElement("li", null, "console.ncloud.com 에서 네이버 클라우드 플랫폼 계정으로 로그인"), /*#__PURE__*/React.createElement("li", null, "AI·NAVER API → Application 등록 → \"Maps\" 선택"), /*#__PURE__*/React.createElement("li", null, "Web Dynamic Map, Geocoding 서비스 체크"), /*#__PURE__*/React.createElement("li", null, "Web 서비스 URL에 현재 접속 주소(예: http://localhost:8000) 등록"), /*#__PURE__*/React.createElement("li", null, "발급된 Client ID를 위 입력창에 붙여넣기")), /*#__PURE__*/React.createElement("p", {
+    className: "mt-1.5"
+  }, "※ 콘솔 화면 구성은 업데이트에 따라 달라질 수 있어요."))), /*#__PURE__*/React.createElement("section", {
+    className: "space-y-2 pt-2 border-t",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-sm font-bold"
+  }, "데이터 관리"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (window.confirm("등록된 모든 농장 데이터를 삭제할까요?")) onResetAll();
+    },
+    className: "tap-active w-full py-2.5 rounded-xl font-bold text-sm",
+    style: {
+      background: cssVar("--danger-tint"),
+      color: cssVar("--danger")
+    }
+  }, "전체 농장 데이터 초기화")))));
 }
 
 /* ------------------------- 메인 앱 ------------------------- */
@@ -916,25 +1285,23 @@ function SettingsModal({ profile, clientId, onClose, onSaveProfile, onSaveClient
 function App() {
   const [farms, setFarms] = useState(() => loadJSON(STORAGE_KEYS.farms, []));
   const [clientId, setClientId] = useState(() => loadJSON(STORAGE_KEYS.clientId, ""));
-  const [profile, setProfile] = useState(() => loadJSON(STORAGE_KEYS.profile, { name: "", region: "", targetRate: 0 }));
-
+  const [profile, setProfile] = useState(() => loadJSON(STORAGE_KEYS.profile, {
+    name: "",
+    region: "",
+    targetRate: 0
+  }));
   const [view, setView] = useState("list");
   const [statusFilter, setStatusFilter] = useState("all");
   const [livestockFilter, setLivestockFilter] = useState("all");
-
   const [selectedFarm, setSelectedFarm] = useState(null);
   const [formState, setFormState] = useState(null); // null | { mode: 'create' } | { mode: 'edit', farm }
   const [showSettings, setShowSettings] = useState(false);
-
   useEffect(() => saveJSON(STORAGE_KEYS.farms, farms), [farms]);
   useEffect(() => saveJSON(STORAGE_KEYS.profile, profile), [profile]);
-
   useEffect(() => {
     if (clientId) ensureNaverMaps(clientId).catch(() => {});
   }, [clientId]);
-
   const todayCount = useMemo(() => farms.filter(f => f.nextVisitDate === todayStr()).length, [farms]);
-
   const filteredFarms = useMemo(() => {
     return farms.filter(f => {
       if (statusFilter === "risk" && f.status === "normal") return false;
@@ -942,114 +1309,134 @@ function App() {
       return true;
     });
   }, [farms, statusFilter, livestockFilter]);
-
-  const handleCreateSubmit = (farm) => { setFarms(list => [farm, ...list]); setFormState(null); };
-  const handleEditSubmit = (farm) => {
+  const handleCreateSubmit = farm => {
+    setFarms(list => [farm, ...list]);
+    setFormState(null);
+  };
+  const handleEditSubmit = farm => {
     setFarms(list => list.map(f => f.id === farm.id ? farm : f));
     setFormState(null);
     setSelectedFarm(farm);
   };
-  const handleDelete = (id) => { setFarms(list => list.filter(f => f.id !== id)); setSelectedFarm(null); };
-
-  const handleSaveClientId = (id) => {
+  const handleDelete = id => {
+    setFarms(list => list.filter(f => f.id !== id));
+    setSelectedFarm(null);
+  };
+  const handleSaveClientId = id => {
     setClientId(id);
     saveJSON(STORAGE_KEYS.clientId, id);
     setShowSettings(false);
     window.location.reload();
   };
-
-  return (
-    <div id="app-shell" className="max-w-[430px] mx-auto min-h-screen pb-24">
-      <Header profile={profile} todayCount={todayCount} onOpenSettings={() => setShowSettings(true)} />
-      <ViewToggle view={view} setView={setView} />
-
-      {view === "list" && farms.length > 0 && (
-        <FilterBar statusFilter={statusFilter} setStatusFilter={setStatusFilter} livestockFilter={livestockFilter} setLivestockFilter={setLivestockFilter} />
-      )}
-
-      {view === "list" ? (
-        <main className="px-5 mt-4 space-y-3">
-          {farms.length === 0 ? (
-            <div className="text-center py-16 px-4">
-              <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-4" style={{ background: cssVar("--brand-tint"), color: cssVar("--brand") }}>
-                <SproutIcon size={26} />
-              </div>
-              <p className="text-sm font-semibold">아직 등록된 농장이 없어요</p>
-              <p className="text-xs mt-1.5" style={{ color: cssVar("--ink-faint") }}>담당 구역의 농장 정보를 직접 등록해 보세요.</p>
-              <button onClick={() => setFormState({ mode: "create" })} className="tap-active mt-5 px-5 py-2.5 rounded-xl text-white font-bold text-sm inline-flex items-center gap-1.5" style={{ background: cssVar("--brand") }}>
-                <PlusIcon size={15} /> 첫 농장 등록하기
-              </button>
-            </div>
-          ) : filteredFarms.length === 0 ? (
-            <div className="text-center py-16" style={{ color: cssVar("--ink-faint") }}>
-              <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3" style={{ background: cssVar("--surface-2") }}>
-                <SproutIcon size={24} />
-              </div>
-              <p className="text-sm font-medium">조건에 맞는 농장이 없습니다.</p>
-            </div>
-          ) : (
-            filteredFarms.map(farm => <FarmCard key={farm.id} farm={farm} onClick={() => setSelectedFarm(farm)} />)
-          )}
-        </main>
-      ) : (
-        <NaverMapView farms={farms} clientId={clientId} onSelect={setSelectedFarm} />
-      )}
-
-      {farms.length > 0 && (
-        <button
-          onClick={() => setFormState({ mode: "create" })}
-          className="tap-active fixed bottom-6 right-6 w-14 h-14 rounded-full text-white flex items-center justify-center z-30"
-          style={{ background: cssVar("--brand"), boxShadow: "0 10px 24px -8px rgba(var(--shadow), 0.5)" }}
-          aria-label="농장 추가"
-        >
-          <PlusIcon size={24} />
-        </button>
-      )}
-
-      {selectedFarm && (
-        <FarmDetailModal
-          farm={selectedFarm}
-          onClose={() => setSelectedFarm(null)}
-          onEdit={(farm) => { setSelectedFarm(null); setFormState({ mode: "edit", farm }); }}
-          onDelete={handleDelete}
-        />
-      )}
-
-      {formState && (
-        <FarmFormModal
-          initialFarm={formState.mode === "edit" ? formState.farm : null}
-          clientId={clientId}
-          onCancel={() => setFormState(null)}
-          onSubmit={formState.mode === "edit" ? handleEditSubmit : handleCreateSubmit}
-        />
-      )}
-
-      {showSettings && (
-        <SettingsModal
-          profile={profile}
-          clientId={clientId}
-          onClose={() => setShowSettings(false)}
-          onSaveProfile={(p) => { setProfile(p); setShowSettings(false); }}
-          onSaveClientId={handleSaveClientId}
-          onResetAll={() => { setFarms([]); setShowSettings(false); }}
-        />
-      )}
-    </div>
-  );
+  return /*#__PURE__*/React.createElement("div", {
+    id: "app-shell",
+    className: "max-w-[430px] mx-auto min-h-screen pb-24"
+  }, /*#__PURE__*/React.createElement(Header, {
+    profile: profile,
+    todayCount: todayCount,
+    onOpenSettings: () => setShowSettings(true)
+  }), /*#__PURE__*/React.createElement(ViewToggle, {
+    view: view,
+    setView: setView
+  }), view === "list" && farms.length > 0 && /*#__PURE__*/React.createElement(FilterBar, {
+    statusFilter: statusFilter,
+    setStatusFilter: setStatusFilter,
+    livestockFilter: livestockFilter,
+    setLivestockFilter: setLivestockFilter
+  }), view === "list" ? /*#__PURE__*/React.createElement("main", {
+    className: "px-5 mt-4 space-y-3"
+  }, farms.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "text-center py-16 px-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-4",
+    style: {
+      background: cssVar("--brand-tint"),
+      color: cssVar("--brand")
+    }
+  }, /*#__PURE__*/React.createElement(SproutIcon, {
+    size: 26
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-semibold"
+  }, "아직 등록된 농장이 없어요"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mt-1.5",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "담당 구역의 농장 정보를 직접 등록해 보세요."), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setFormState({
+      mode: "create"
+    }),
+    className: "tap-active mt-5 px-5 py-2.5 rounded-xl text-white font-bold text-sm inline-flex items-center gap-1.5",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, /*#__PURE__*/React.createElement(PlusIcon, {
+    size: 15
+  }), " 첫 농장 등록하기")) : filteredFarms.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "text-center py-16",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement(SproutIcon, {
+    size: 24
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-medium"
+  }, "조건에 맞는 농장이 없습니다.")) : filteredFarms.map(farm => /*#__PURE__*/React.createElement(FarmCard, {
+    key: farm.id,
+    farm: farm,
+    onClick: () => setSelectedFarm(farm)
+  }))) : /*#__PURE__*/React.createElement(NaverMapView, {
+    farms: farms,
+    clientId: clientId,
+    onSelect: setSelectedFarm
+  }), farms.length > 0 && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setFormState({
+      mode: "create"
+    }),
+    className: "tap-active fixed bottom-6 right-6 w-14 h-14 rounded-full text-white flex items-center justify-center z-30",
+    style: {
+      background: cssVar("--brand"),
+      boxShadow: "0 10px 24px -8px rgba(var(--shadow), 0.5)"
+    },
+    "aria-label": "농장 추가"
+  }, /*#__PURE__*/React.createElement(PlusIcon, {
+    size: 24
+  })), selectedFarm && /*#__PURE__*/React.createElement(FarmDetailModal, {
+    farm: selectedFarm,
+    onClose: () => setSelectedFarm(null),
+    onEdit: farm => {
+      setSelectedFarm(null);
+      setFormState({
+        mode: "edit",
+        farm
+      });
+    },
+    onDelete: handleDelete
+  }), formState && /*#__PURE__*/React.createElement(FarmFormModal, {
+    initialFarm: formState.mode === "edit" ? formState.farm : null,
+    clientId: clientId,
+    onCancel: () => setFormState(null),
+    onSubmit: formState.mode === "edit" ? handleEditSubmit : handleCreateSubmit
+  }), showSettings && /*#__PURE__*/React.createElement(SettingsModal, {
+    profile: profile,
+    clientId: clientId,
+    onClose: () => setShowSettings(false),
+    onSaveProfile: p => {
+      setProfile(p);
+      setShowSettings(false);
+    },
+    onSaveClientId: handleSaveClientId,
+    onResetAll: () => {
+      setFarms([]);
+      setShowSettings(false);
+    }
+  }));
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-</script>
-
-<script>
-  var source = document.getElementById("app-source").textContent;
-  var transformed = Babel.transform(source, {
-    presets: [["react", { runtime: "classic" }]],
-    filename: "app.jsx",
-  }).code;
-  var scriptEl = document.createElement("script");
-  scriptEl.text = transformed;
-  document.body.appendChild(scriptEl);
-</script>
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));</script>
 </body>
 </html>
