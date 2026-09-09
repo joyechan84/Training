@@ -12,7 +12,7 @@
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.4/chart.umd.min.js"></script>
 
 <style>
   /* ---------- Design tokens ---------- */
@@ -541,6 +541,7 @@ function OrderChart({
   const hasData = orders.some(v => v > 0);
   useEffect(() => {
     if (!hasData || !canvasRef.current) return;
+    if (typeof Chart === "undefined") return;
     if (chartRef.current) chartRef.current.destroy();
     const style = getComputedStyle(document.documentElement);
     const brand = style.getPropertyValue("--brand").trim();
@@ -1437,6 +1438,30 @@ function App() {
     }
   }));
 }
-ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(App, null));</script>
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  render() {
+    if (this.state.error) {
+      return React.createElement("div", {
+        style: { padding: "40px 24px", textAlign: "center", fontFamily: "'Noto Sans KR', sans-serif" }
+      },
+        React.createElement("p", { style: { fontWeight: 700, fontSize: "15px", color: "#a63a2f", marginBottom: "6px" } }, "문제가 발생했습니다"),
+        React.createElement("p", { style: { fontSize: "13px", color: "#5b6b5c", marginBottom: "16px" } }, "새로고침해서 다시 시도해 주세요."),
+        React.createElement("button", {
+          onClick: () => window.location.reload(),
+          style: { padding: "10px 22px", borderRadius: "10px", background: "#1f5c3d", color: "#fff", border: "none", fontWeight: 700 }
+        }, "새로고침")
+      );
+    }
+    return this.props.children;
+  }
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(AppErrorBoundary, null, /*#__PURE__*/React.createElement(App, null)));</script>
 </body>
 </html>
