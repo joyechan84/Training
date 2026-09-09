@@ -301,7 +301,7 @@ function ensureNaverMaps(clientId) {
   window.__naverMapsClientId = clientId;
   window.__naverMapsPromise = new Promise((resolve, reject) => {
     const script = document.createElement("script");
-    script.src = "https://openapi.map.naver.com/openapi/v3/maps.js?ncpClientId=" + encodeURIComponent(clientId) + "&submodules=geocoder";
+    script.src = "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=" + encodeURIComponent(clientId) + "&submodules=geocoder";
     script.onload = () => {
       if (window.naver && window.naver.maps) resolve(window.naver.maps);else reject(new Error("SCRIPT_LOAD_FAILED"));
     };
@@ -1234,7 +1234,7 @@ function SettingsModal({
     className: "text-sm font-bold"
   }, "네이버 지도 연동"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "field-label"
-  }, "네이버 지도 Client ID (ncpClientId)"), /*#__PURE__*/React.createElement("input", {
+  }, "네이버 지도 Client ID (ncpKeyId)"), /*#__PURE__*/React.createElement("input", {
     className: "field font-mono",
     value: keyInput,
     onChange: e => setKeyInput(e.target.value),
