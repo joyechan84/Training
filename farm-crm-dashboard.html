@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>농장 순회 CRM</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+
+<style>
+  /* ---------- Design tokens ---------- */
+  :root {
+    --bg: #eef3ea;
+    --surface: #ffffff;
+    --surface-2: #eef3ea;
+    --border: #d8e3d3;
+    --ink: #182219;
+    --ink-soft: #5b6b5c;
+    --ink-faint: #8a988a;
+    --brand: #1f5c3d;
+    --brand-strong: #123822;
+    --brand-tint: #dcece1;
+    --accent: #b1812c;
+    --accent-tint: #f3e6c8;
+    --ok: #257a4a;
+    --ok-tint: #dcf0e2;
+    --warn: #a6741f;
+    --warn-tint: #f7ecd2;
+    --danger: #a63a2f;
+    --danger-tint: #f6dfda;
+    --shadow: 24, 38, 26;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1811;
+      --surface: #172119;
+      --surface-2: #1d2a20;
+      --border: #2b3a2d;
+      --ink: #eaf1e7;
+      --ink-soft: #a2b3a1;
+      --ink-faint: #71826f;
+      --brand: #6fc491;
+      --brand-strong: #8fd6ac;
+      --brand-tint: rgba(111, 196, 145, 0.16);
+      --accent: #e0b85c;
+      --accent-tint: rgba(224, 184, 92, 0.16);
+      --ok: #5cbf85;
+      --ok-tint: rgba(92, 191, 133, 0.16);
+      --warn: #e0ab52;
+      --warn-tint: rgba(224, 171, 82, 0.16);
+      --danger: #e08475;
+      --danger-tint: rgba(224, 132, 117, 0.16);
+      --shadow: 0, 0, 0;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1811;
+    --surface: #172119;
+    --surface-2: #1d2a20;
+    --border: #2b3a2d;
+    --ink: #eaf1e7;
+    --ink-soft: #a2b3a1;
+    --ink-faint: #71826f;
+    --brand: #6fc491;
+    --brand-strong: #8fd6ac;
+    --brand-tint: rgba(111, 196, 145, 0.16);
+    --accent: #e0b85c;
+    --accent-tint: rgba(224, 184, 92, 0.16);
+    --ok: #5cbf85;
+    --ok-tint: rgba(92, 191, 133, 0.16);
+    --warn: #e0ab52;
+    --warn-tint: rgba(224, 171, 82, 0.16);
+    --danger: #e08475;
+    --danger-tint: rgba(224, 132, 117, 0.16);
+    --shadow: 0, 0, 0;
+  }
+
+  html, body { background: var(--bg); }
+  body {
+    font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    color: var(--ink);
+    background-color: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  .font-mono { font-family: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace; font-variant-numeric: tabular-nums; }
+  #app-shell {
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(var(--shadow), 0.06), 0 20px 44px -20px rgba(var(--shadow), 0.28);
+    position: relative;
+  }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+  .tap-active { -webkit-tap-highlight-color: transparent; transition: transform .12s ease; }
+  .tap-active:active { transform: scale(0.97); }
+  h1, h2, h3 { text-wrap: balance; letter-spacing: -0.01em; }
+  .icon { display: inline-block; vertical-align: -0.125em; }
+  .seg {
+    display: inline-flex;
+    padding: 3px;
+    border-radius: 14px;
+    background: var(--surface-2);
+    gap: 2px;
+  }
+  .seg-btn {
+    border-radius: 11px;
+    padding: 0.5rem 0.9rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--ink-soft);
+  }
+  .seg-btn.is-active {
+    background: var(--surface);
+    color: var(--brand);
+    box-shadow: 0 1px 3px rgba(var(--shadow), 0.12);
+  }
+
+  .field {
+    width: 100%;
+    font-size: 0.875rem;
+    padding: 0.65rem 0.8rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .field:focus { outline: 2px solid var(--brand); outline-offset: 1px; }
+  .field-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--ink-soft);
+    margin-bottom: 0.3rem;
+    display: block;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-backdrop { animation: fadeIn .18s ease-out; }
+  .modal-sheet { animation: slideUp .22s cubic-bezier(.2,.9,.3,1); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .modal-backdrop, .modal-sheet { animation: none; }
+    .tap-active, .tap-active:active { transition: none; transform: none; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+const {
+  useState,
+  useEffect,
+  useRef,
+  useMemo
+} = React;
+
+/* ------------------------- 상수 / 유틸 ------------------------- */
+
+const LIVESTOCK = {
+  hanwoo: {
+    label: "한우",
+    icon: "🐂"
+  },
+  dairy: {
+    label: "낙농",
+    icon: "🐄"
+  },
+  pig: {
+    label: "양돈",
+    icon: "🐖"
+  },
+  poultry: {
+    label: "양계",
+    icon: "🐔"
+  }
+};
+
+// c: 강조색(점/텍스트/스트라이프) 변수명, tint: 배경 변수명
+const STATUS = {
+  normal: {
+    label: "정상",
+    c: "--ok",
+    tint: "--ok-tint"
+  },
+  caution: {
+    label: "관심 필요",
+    c: "--warn",
+    tint: "--warn-tint"
+  },
+  danger: {
+    label: "위험",
+    c: "--danger",
+    tint: "--danger-tint"
+  }
+};
+const MONTH_TAG_LABELS = ["전전월", "전월", "이번달"];
+const STORAGE_KEYS = {
+  firebaseConfig: "farmCrm.firebaseConfig.v1",
+  naverOverride: "farmCrm.naverClientIdOverride.v1"
+};
+
+// 배포자가 한 번만 설정해두는 기본값 — 일반 사용자는 이 값을 몰라도 됩니다.
+// ?admin=1 로 접속했을 때만 이 값을 덮어쓸 수 있는 화면이 보입니다.
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCHcFnxwzKqoD6dk75_Cgc14k-mLsC3Sao",
+  authDomain: "farm-management-32f1c.firebaseapp.com",
+  projectId: "farm-management-32f1c",
+  storageBucket: "farm-management-32f1c.firebasestorage.app",
+  messagingSenderId: "645209960398",
+  appId: "1:645209960398:web:04fe19b991da9726a3459f",
+  measurementId: "G-F8PNW4WWSZ"
+};
+const DEFAULT_NAVER_CLIENT_ID = "a6mn6hvpnu";
+function isAdminMode() {
+  try {
+    return new URLSearchParams(window.location.search).get("admin") === "1";
+  } catch (e) {
+    return false;
+  }
+}
+function getNaverClientId() {
+  return loadJSON(STORAGE_KEYS.naverOverride, null) || DEFAULT_NAVER_CLIENT_ID;
+}
+const cssVar = name => `var(${name})`;
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+function saveJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {/* 저장 공간이 없거나 접근이 막힌 경우 조용히 무시 */}
+}
+
+/* ------------------------- 아이콘 (인라인 SVG) ------------------------- */
+
+function Icon({
+  children,
+  size = 18,
+  className = ""
+}) {
+  return /*#__PURE__*/React.createElement("svg", {
+    className: "icon " + className,
+    width: size,
+    height: size,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: "2",
+    strokeLinecap: "round",
+    strokeLinejoin: "round"
+  }, children);
+}
+const GearIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "12",
+  r: "3"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+}));
+const CloseIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M18 6 6 18M6 6l12 12"
+}));
+const PlusIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M12 5v14M5 12h14"
+}));
+const ChevronIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "m9 18 6-6-6-6"
+}));
+const PhoneIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"
+}));
+const PinIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "10",
+  r: "3"
+}));
+const MapIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M3 6.5 9 4l6 2.5 6-2.5v13L15 19.5 9 17l-6 2.5Z"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M9 4v13M15 6.5v13"
+}));
+const SproutIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M7 20h10M12 20v-7"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M12 13c0-3.5-2-5.5-6-6 0 4 1.5 6.5 6 6Z"
+}), /*#__PURE__*/React.createElement("path", {
+  d: "M12 10c0-3 1.8-5 5-6 0 3.5-1.3 6-5 6Z"
+}));
+const UserIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M20 21a8 8 0 1 0-16 0"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "7",
+  r: "4"
+}));
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+function daysSince(dateStr) {
+  if (!dateStr) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const then = new Date(y, m - 1, d).getTime();
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  return Math.round((today - then) / 86400000);
+}
+
+/* ---------------- 네이버 지도 로더 / 지오코딩 ---------------- */
+
+function ensureNaverMaps(clientId) {
+  if (!clientId) return Promise.reject(new Error("NO_KEY"));
+  if (window.naver && window.naver.maps && window.naver.maps.Service) return Promise.resolve(window.naver.maps);
+  if (window.__naverMapsPromise && window.__naverMapsClientId === clientId) return window.__naverMapsPromise;
+  window.__naverMapsClientId = clientId;
+  window.__naverMapsPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=" + encodeURIComponent(clientId) + "&submodules=geocoder";
+    script.onload = () => {
+      if (window.naver && window.naver.maps) resolve(window.naver.maps);else reject(new Error("SCRIPT_LOAD_FAILED"));
+    };
+    script.onerror = () => reject(new Error("SCRIPT_LOAD_FAILED"));
+    document.head.appendChild(script);
+  });
+  return window.__naverMapsPromise;
+}
+function geocodeAddress(address) {
+  return new Promise(resolve => {
+    if (!window.naver || !window.naver.maps || !window.naver.maps.Service) {
+      resolve(null);
+      return;
+    }
+    window.naver.maps.Service.geocode({
+      query: address
+    }, (status, response) => {
+      if (status !== window.naver.maps.Service.Status.OK) {
+        resolve(null);
+        return;
+      }
+      const list = response.v2 && response.v2.addresses;
+      if (!list || list.length === 0) {
+        resolve(null);
+        return;
+      }
+      const item = list[0];
+      resolve({
+        lat: parseFloat(item.y),
+        lng: parseFloat(item.x),
+        formatted: item.roadAddress || item.jibunAddress || address
+      });
+    });
+  });
+}
+
+/* ---------------- Firebase 로더 / 인증 유틸 ---------------- */
+
+function getFirebaseApp(config) {
+  if (window.firebase.apps.length) return window.firebase.apps[0];
+  return window.firebase.initializeApp(config);
+}
+function parseFirebaseConfigSnippet(text) {
+  const knownKeys = ["apiKey", "authDomain", "projectId", "storageBucket", "messagingSenderId", "appId", "measurementId"];
+  const result = {};
+  const re = /(\w+)\s*:\s*["']([^"']+)["']/g;
+  let m;
+  while (m = re.exec(text)) {
+    if (knownKeys.includes(m[1])) result[m[1]] = m[2];
+  }
+  return result;
+}
+function mapAuthError(code) {
+  const map = {
+    "auth/email-already-in-use": "이미 가입된 이메일이에요.",
+    "auth/invalid-email": "이메일 형식이 올바르지 않아요.",
+    "auth/weak-password": "비밀번호는 6자 이상이어야 해요.",
+    "auth/user-not-found": "가입되지 않은 이메일이에요.",
+    "auth/wrong-password": "비밀번호가 올바르지 않아요.",
+    "auth/invalid-credential": "이메일 또는 비밀번호가 올바르지 않아요.",
+    "auth/too-many-requests": "시도가 너무 많아요. 잠시 후 다시 시도해 주세요.",
+    "auth/network-request-failed": "네트워크 연결을 확인해 주세요.",
+    "auth/operation-not-allowed": "Firebase 콘솔에서 이메일/비밀번호 로그인 방법을 켜주세요.",
+    "auth/unauthorized-domain": "이 주소가 Firebase에 승인되지 않았어요. Authentication → Settings → 승인된 도메인에 이 사이트 주소를 추가해 주세요."
+  };
+  return map[code] || `오류가 발생했어요 (${code || "코드 없음"}). 잠시 후 다시 시도해 주세요.`;
+}
+
+/* ------------------------- 서브 컴포넌트 ------------------------- */
+
+function LoadingScreen({
+  text
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen flex items-center justify-center",
+    style: {
+      background: cssVar("--bg"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm"
+  }, text || "불러오는 중..."));
+}
+function StatusChip({
+  status
+}) {
+  const s = STATUS[status];
+  return /*#__PURE__*/React.createElement("span", {
+    className: "inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full",
+    style: {
+      background: cssVar(s.tint),
+      color: cssVar(s.c)
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-1.5 h-1.5 rounded-full",
+    style: {
+      background: cssVar(s.c)
+    }
+  }), s.label);
+}
+function Header({
+  profile,
+  todayCount,
+  onOpenSettings
+}) {
+  return /*#__PURE__*/React.createElement("header", {
+    className: "text-white px-5 pt-7 pb-8 rounded-b-[28px]",
+    style: {
+      background: `linear-gradient(160deg, var(--brand-strong), var(--brand))`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center justify-between"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-medium tracking-wide text-white/70"
+  }, profile.region ? profile.region : "담당 구역 미설정 · 설정에서 입력"), /*#__PURE__*/React.createElement("h1", {
+    className: "text-[22px] font-black mt-1"
+  }, "농장 순회 CRM")), /*#__PURE__*/React.createElement("button", {
+    onClick: onOpenSettings,
+    className: "tap-active w-11 h-11 rounded-full bg-white/15 flex items-center justify-center ring-1 ring-white/25",
+    "aria-label": "설정"
+  }, /*#__PURE__*/React.createElement(GearIcon, {
+    size: 19
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3 mt-6"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "bg-white/10 rounded-2xl p-4"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-white/70 font-medium tracking-wide"
+  }, "오늘 방문 예정"), /*#__PURE__*/React.createElement("p", {
+    className: "font-mono text-[28px] font-semibold mt-1.5 leading-none"
+  }, todayCount, /*#__PURE__*/React.createElement("span", {
+    className: "text-sm font-medium ml-1 text-white/80"
+  }, "곳"))), /*#__PURE__*/React.createElement("div", {
+    className: "bg-white/10 rounded-2xl p-4"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] text-white/70 font-medium tracking-wide"
+  }, "이번 달 목표 달성률"), /*#__PURE__*/React.createElement("p", {
+    className: "font-mono text-[28px] font-semibold mt-1.5 leading-none"
+  }, profile.targetRate, /*#__PURE__*/React.createElement("span", {
+    className: "text-sm font-medium ml-1 text-white/80"
+  }, "%")), /*#__PURE__*/React.createElement("div", {
+    className: "w-full h-1.5 bg-white/20 rounded-full mt-2.5 overflow-hidden"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "h-full bg-white rounded-full",
+    style: {
+      width: Math.min(100, Math.max(0, profile.targetRate)) + "%"
+    }
+  })))));
+}
+function ViewToggle({
+  view,
+  setView
+}) {
+  const items = [{
+    key: "list",
+    label: "목록"
+  }, {
+    key: "map",
+    label: "지도"
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "px-5 mt-5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "seg w-full"
+  }, items.map(it => /*#__PURE__*/React.createElement("button", {
+    key: it.key,
+    onClick: () => setView(it.key),
+    className: "tap-active seg-btn flex-1" + (view === it.key ? " is-active" : "")
+  }, it.label))));
+}
+function FilterBar({
+  statusFilter,
+  setStatusFilter,
+  livestockFilter,
+  setLivestockFilter
+}) {
+  const statusChips = [{
+    key: "all",
+    label: "전체 보기"
+  }, {
+    key: "risk",
+    label: "위험·관심만"
+  }];
+  return /*#__PURE__*/React.createElement("div", {
+    className: "px-5 mt-3 space-y-2.5"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "seg w-full"
+  }, statusChips.map(c => /*#__PURE__*/React.createElement("button", {
+    key: c.key,
+    onClick: () => setStatusFilter(c.key),
+    className: "tap-active seg-btn flex-1" + (statusFilter === c.key ? " is-active" : "")
+  }, c.label))), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 overflow-x-auto pb-1 -mx-5 px-5"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => setLivestockFilter("all"),
+    className: "tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border",
+    style: livestockFilter === "all" ? {
+      background: cssVar("--brand-tint"),
+      borderColor: cssVar("--brand"),
+      color: cssVar("--brand")
+    } : {
+      background: cssVar("--surface"),
+      borderColor: cssVar("--border"),
+      color: cssVar("--ink-faint")
+    }
+  }, "축종 전체"), Object.entries(LIVESTOCK).map(([key, v]) => {
+    const active = livestockFilter === key;
+    return /*#__PURE__*/React.createElement("button", {
+      key: key,
+      onClick: () => setLivestockFilter(key),
+      className: "tap-active shrink-0 px-3.5 py-2 rounded-full text-xs font-semibold border flex items-center gap-1",
+      style: active ? {
+        background: cssVar("--brand-tint"),
+        borderColor: cssVar("--brand"),
+        color: cssVar("--brand")
+      } : {
+        background: cssVar("--surface"),
+        borderColor: cssVar("--border"),
+        color: cssVar("--ink-faint")
+      }
+    }, /*#__PURE__*/React.createElement("span", null, v.icon), v.label);
+  })));
+}
+function FarmCard({
+  farm,
+  onClick
+}) {
+  const s = STATUS[farm.status];
+  const l = LIVESTOCK[farm.livestock];
+  const dSince = daysSince(farm.lastVisitDate);
+  return /*#__PURE__*/React.createElement("button", {
+    onClick: onClick,
+    className: "tap-active w-full text-left rounded-2xl pl-4 pr-3.5 py-4 flex items-center gap-3 border-l-4",
+    style: {
+      background: cssVar("--surface"),
+      borderLeftColor: cssVar(s.c),
+      boxShadow: `0 1px 2px rgba(var(--shadow), 0.04), 0 6px 16px -12px rgba(var(--shadow), 0.4)`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-12 h-12 rounded-xl flex items-center justify-center text-2xl shrink-0",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, l.icon), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 min-w-0"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "font-bold truncate"
+  }, farm.name), farm.nextVisitDate === todayStr() && /*#__PURE__*/React.createElement("span", {
+    className: "shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md tracking-wide",
+    style: {
+      background: cssVar("--accent-tint"),
+      color: cssVar("--accent")
+    }
+  }, "오늘 방문")), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mt-0.5 font-mono truncate",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, l.label, " · ", dSince === null ? "방문 기록 없음" : `마지막 방문 D-${dSince}`), farm.address && /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] mt-0.5 truncate flex items-center gap-1",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, /*#__PURE__*/React.createElement(PinIcon, {
+    size: 11
+  }), " ", farm.address)), /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col items-end gap-1.5 shrink-0"
+  }, /*#__PURE__*/React.createElement(StatusChip, {
+    status: farm.status
+  }), /*#__PURE__*/React.createElement(ChevronIcon, {
+    size: 16,
+    className: "opacity-50"
+  })));
+}
+function OrderChart({
+  orders
+}) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+  const hasData = orders.some(v => v > 0);
+  useEffect(() => {
+    if (!hasData || !canvasRef.current) return;
+    if (typeof Chart === "undefined") return;
+    if (chartRef.current) chartRef.current.destroy();
+    const style = getComputedStyle(document.documentElement);
+    const brand = style.getPropertyValue("--brand").trim();
+    const ink = style.getPropertyValue("--ink-soft").trim();
+    const grid = style.getPropertyValue("--border").trim();
+    chartRef.current = new Chart(canvasRef.current, {
+      type: "bar",
+      data: {
+        labels: MONTH_TAG_LABELS,
+        datasets: [{
+          label: "주문량 (톤)",
+          data: orders,
+          backgroundColor: brand,
+          borderRadius: 8,
+          maxBarThickness: 44
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: grid
+            },
+            ticks: {
+              color: ink,
+              font: {
+                size: 11,
+                family: "'IBM Plex Mono', monospace"
+              }
+            }
+          },
+          x: {
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: ink,
+              font: {
+                size: 12,
+                weight: "600",
+                family: "'Noto Sans KR', sans-serif"
+              }
+            }
+          }
+        }
+      }
+    });
+    return () => {
+      if (chartRef.current) chartRef.current.destroy();
+    };
+  }, [orders, hasData]);
+  if (!hasData) {
+    return /*#__PURE__*/React.createElement("p", {
+      className: "text-xs py-8 text-center",
+      style: {
+        color: cssVar("--ink-faint")
+      }
+    }, "최근 주문 데이터가 없습니다.");
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "h-40 mt-2"
+  }, /*#__PURE__*/React.createElement("canvas", {
+    ref: canvasRef
+  }));
+}
+
+/* ---------------- 지도 뷰 ---------------- */
+
+function NaverMapView({
+  farms,
+  clientId,
+  onSelect
+}) {
+  const mapDivRef = useRef(null);
+  const mapObjRef = useRef(null);
+  const markersRef = useRef([]);
+  const [mapState, setMapState] = useState(clientId ? "loading" : "no-key");
+  useEffect(() => {
+    if (!clientId) {
+      setMapState("no-key");
+      return;
+    }
+    let cancelled = false;
+    setMapState("loading");
+    ensureNaverMaps(clientId).then(maps => {
+      if (cancelled || !mapDivRef.current) return;
+      mapObjRef.current = new maps.Map(mapDivRef.current, {
+        center: new maps.LatLng(36.5, 127.8),
+        zoom: 7
+      });
+      setMapState("ready");
+    }).catch(() => {
+      if (!cancelled) setMapState("error");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [clientId]);
+  useEffect(() => {
+    if (mapState !== "ready" || !window.naver || !mapObjRef.current) return;
+    const maps = window.naver.maps;
+    markersRef.current.forEach(m => m.setMap(null));
+    markersRef.current = [];
+    const located = farms.filter(f => typeof f.lat === "number" && typeof f.lng === "number");
+    const style = getComputedStyle(document.documentElement);
+    located.forEach(farm => {
+      const color = style.getPropertyValue(STATUS[farm.status].c).trim();
+      const marker = new maps.Marker({
+        position: new maps.LatLng(farm.lat, farm.lng),
+        map: mapObjRef.current,
+        icon: {
+          content: `<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)"></div>`,
+          anchor: new maps.Point(8, 8)
+        },
+        title: farm.name
+      });
+      maps.Event.addListener(marker, "click", () => onSelect(farm));
+      markersRef.current.push(marker);
+    });
+    if (located.length > 0) {
+      const bounds = new maps.LatLngBounds(new maps.LatLng(located[0].lat, located[0].lng), new maps.LatLng(located[0].lat, located[0].lng));
+      located.forEach(f => bounds.extend(new maps.LatLng(f.lat, f.lng)));
+      mapObjRef.current.fitBounds(bounds, {
+        top: 40,
+        right: 40,
+        bottom: 40,
+        left: 40
+      });
+    }
+  }, [farms, mapState]);
+  if (mapState === "no-key") {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "mx-5 mt-4 rounded-2xl border p-6 text-center",
+      style: {
+        borderColor: cssVar("--border"),
+        background: cssVar("--surface-2")
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "w-11 h-11 mx-auto rounded-full flex items-center justify-center mb-3",
+      style: {
+        background: cssVar("--brand-tint"),
+        color: cssVar("--brand")
+      }
+    }, /*#__PURE__*/React.createElement(MapIcon, {
+      size: 20
+    })), /*#__PURE__*/React.createElement("p", {
+      className: "text-sm font-semibold"
+    }, "네이버 지도 API 키가 설정되지 않았어요"), /*#__PURE__*/React.createElement("p", {
+      className: "text-xs mt-1.5",
+      style: {
+        color: cssVar("--ink-soft")
+      }
+    }, "우측 상단 설정(톱니바퀴)에서 네이버 지도 Client ID를 등록하면", /*#__PURE__*/React.createElement("br", null), "농장 주소가 실제 지도에 표시됩니다."));
+  }
+  if (mapState === "error") {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "mx-5 mt-4 rounded-2xl border p-5 text-center",
+      style: {
+        borderColor: cssVar("--danger"),
+        background: cssVar("--danger-tint")
+      }
+    }, /*#__PURE__*/React.createElement("p", {
+      className: "text-sm font-semibold",
+      style: {
+        color: cssVar("--danger")
+      }
+    }, "지도를 불러오지 못했습니다"), /*#__PURE__*/React.createElement("p", {
+      className: "text-xs mt-1.5",
+      style: {
+        color: cssVar("--ink-soft")
+      }
+    }, "Client ID가 올바른지, 그리고 네이버 클라우드 콘솔에 현재 접속 주소가", /*#__PURE__*/React.createElement("br", null), "허용된 Web 서비스 URL로 등록되어 있는지 확인해 주세요."));
+  }
+  return /*#__PURE__*/React.createElement("div", {
+    className: "px-5 mt-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    ref: mapDivRef,
+    className: "w-full h-[320px] rounded-2xl border overflow-hidden",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, mapState === "loading" && /*#__PURE__*/React.createElement("div", {
+    className: "w-full h-full flex items-center justify-center text-sm",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "지도를 불러오는 중...")), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-4 mt-3 px-1 text-xs",
+    style: {
+      color: cssVar("--ink-soft")
+    }
+  }, Object.entries(STATUS).map(([key, s]) => /*#__PURE__*/React.createElement("span", {
+    key: key,
+    className: "flex items-center gap-1.5"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "w-2 h-2 rounded-full",
+    style: {
+      background: cssVar(s.c)
+    }
+  }), s.label))), farms.length > 0 && farms.every(f => typeof f.lat !== "number") && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mt-3 text-center",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "등록된 농장의 좌표를 찾지 못했습니다. 주소를 다시 확인해 주세요."));
+}
+
+/* ---------------- 농장 등록 / 수정 폼 ---------------- */
+
+function emptyFarmDraft() {
+  return {
+    name: "",
+    livestock: "hanwoo",
+    status: "normal",
+    owner: "",
+    phone: "",
+    address: "",
+    product: "",
+    orders: [0, 0, 0],
+    lastVisitDate: "",
+    nextVisitDate: "",
+    note: ""
+  };
+}
+function FarmFormModal({
+  initialFarm,
+  clientId,
+  onCancel,
+  onSubmit
+}) {
+  const isEdit = !!initialFarm;
+  const [draft, setDraft] = useState(() => initialFarm ? {
+    ...emptyFarmDraft(),
+    ...initialFarm
+  } : emptyFarmDraft());
+  const [saving, setSaving] = useState(false);
+  const [geoNote, setGeoNote] = useState("");
+  const setField = (key, value) => setDraft(d => ({
+    ...d,
+    [key]: value
+  }));
+  const setOrder = (idx, value) => setDraft(d => {
+    const orders = [...d.orders];
+    orders[idx] = Number(value) || 0;
+    return {
+      ...d,
+      orders
+    };
+  });
+  const handleSubmit = async e => {
+    e.preventDefault();
+    if (!draft.name.trim() || !draft.address.trim()) return;
+    setSaving(true);
+    setGeoNote("");
+    let lat = isEdit ? initialFarm.lat : undefined;
+    let lng = isEdit ? initialFarm.lng : undefined;
+    const addressChanged = !isEdit || initialFarm.address !== draft.address;
+    if (addressChanged) {
+      lat = undefined;
+      lng = undefined;
+      try {
+        await ensureNaverMaps(clientId);
+        const geo = await geocodeAddress(draft.address);
+        if (geo) {
+          lat = geo.lat;
+          lng = geo.lng;
+        } else setGeoNote("주소를 찾지 못했어요. 저장은 되지만 지도에는 표시되지 않아요.");
+      } catch (err) {
+        setGeoNote("지도 API 키가 설정되지 않아 좌표를 확인하지 못했어요. 설정에서 키를 등록해 보세요.");
+      }
+    }
+    const farm = {
+      ...draft,
+      id: isEdit ? initialFarm.id : Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+      lat,
+      lng
+    };
+    setSaving(false);
+    onSubmit(farm);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-end justify-center modal-backdrop"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 bg-black/45",
+    onClick: onCancel
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[92vh] overflow-y-auto",
+    style: {
+      background: cssVar("--surface")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between",
+    style: {
+      background: cssVar("--surface"),
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-base font-bold"
+  }, isEdit ? "농장 정보 수정" : "새 농장 등록"), /*#__PURE__*/React.createElement("button", {
+    onClick: onCancel,
+    className: "tap-active w-9 h-9 rounded-full flex items-center justify-center",
+    style: {
+      background: cssVar("--surface-2"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement(CloseIcon, {
+    size: 16
+  }))), /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleSubmit,
+    className: "p-5 space-y-4"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "농장명 *"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    required: true,
+    value: draft.name,
+    onChange: e => setField("name", e.target.value),
+    placeholder: "예: 한라농장"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "사육 축종"), /*#__PURE__*/React.createElement("select", {
+    className: "field",
+    value: draft.livestock,
+    onChange: e => setField("livestock", e.target.value)
+  }, Object.entries(LIVESTOCK).map(([k, v]) => /*#__PURE__*/React.createElement("option", {
+    key: k,
+    value: k
+  }, v.icon, " ", v.label)))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "상태"), /*#__PURE__*/React.createElement("select", {
+    className: "field",
+    value: draft.status,
+    onChange: e => setField("status", e.target.value)
+  }, Object.entries(STATUS).map(([k, v]) => /*#__PURE__*/React.createElement("option", {
+    key: k,
+    value: k
+  }, v.label))))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "농장주"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: draft.owner,
+    onChange: e => setField("owner", e.target.value),
+    placeholder: "이름"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "연락처"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: draft.phone,
+    onChange: e => setField("phone", e.target.value),
+    placeholder: "010-0000-0000"
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "주소 *"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    required: true,
+    value: draft.address,
+    onChange: e => setField("address", e.target.value),
+    placeholder: "예: 제주특별자치도 제주시 ○○로 123"
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] mt-1.5",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "저장하면 자동으로 지도 좌표를 찾아 지도 탭에 표시돼요.")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "현재 사용 사료 제품"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: draft.product,
+    onChange: e => setField("product", e.target.value),
+    placeholder: "예: 한우비육사료 A+"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "최근 3개월 주문량 (톤)"), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-3 gap-2"
+  }, MONTH_TAG_LABELS.map((label, idx) => /*#__PURE__*/React.createElement("div", {
+    key: label
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    className: "field text-center font-mono",
+    value: draft.orders[idx],
+    onChange: e => setOrder(idx, e.target.value)
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "text-[10px] text-center mt-1",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, label))))), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "마지막 방문일"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    className: "field",
+    value: draft.lastVisitDate,
+    onChange: e => setField("lastVisitDate", e.target.value)
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "다음 방문 예정일"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    className: "field",
+    value: draft.nextVisitDate,
+    onChange: e => setField("nextVisitDate", e.target.value)
+  }))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "특이사항 메모"), /*#__PURE__*/React.createElement("textarea", {
+    className: "field resize-none",
+    rows: 3,
+    value: draft.note,
+    onChange: e => setField("note", e.target.value),
+    placeholder: "예: 최근 폭염으로 섭취량 저하 호소"
+  })), geoNote && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs rounded-lg p-2.5",
+    style: {
+      background: cssVar("--warn-tint"),
+      color: cssVar("--warn")
+    }
+  }, geoNote), /*#__PURE__*/React.createElement("button", {
+    type: "submit",
+    disabled: saving,
+    className: "tap-active w-full py-3.5 rounded-xl text-white font-bold text-sm disabled:opacity-60",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, saving ? "좌표 확인 중..." : isEdit ? "수정 완료" : "농장 등록"))));
+}
+
+/* ---------------- 농장 상세 모달 ---------------- */
+
+function FarmDetailModal({
+  farm,
+  onClose,
+  onEdit,
+  onDelete
+}) {
+  const l = LIVESTOCK[farm.livestock];
+  const handleDelete = () => {
+    if (window.confirm(`${farm.name} 정보를 삭제할까요? 이 작업은 되돌릴 수 없습니다.`)) onDelete(farm.id);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-end justify-center modal-backdrop"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 bg-black/45",
+    onClick: onClose
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[88vh] overflow-y-auto",
+    style: {
+      background: cssVar("--surface"),
+      boxShadow: "0 -12px 40px -12px rgba(0,0,0,0.35)"
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b",
+    style: {
+      background: cssVar("--surface"),
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-10 h-1.5 rounded-full mx-auto mb-3",
+    style: {
+      background: cssVar("--border")
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex items-start justify-between"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex items-center gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-12 h-12 rounded-2xl flex items-center justify-center text-2xl",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, l.icon), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", {
+    className: "text-lg font-bold"
+  }, farm.name), /*#__PURE__*/React.createElement("div", {
+    className: "mt-1"
+  }, /*#__PURE__*/React.createElement(StatusChip, {
+    status: farm.status
+  })))), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "tap-active w-9 h-9 rounded-full flex items-center justify-center",
+    style: {
+      background: cssVar("--surface-2"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement(CloseIcon, {
+    size: 16
+  })))), /*#__PURE__*/React.createElement("div", {
+    className: "p-5 space-y-5"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: "grid grid-cols-2 gap-3"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "rounded-xl p-3.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "농장주"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1"
+  }, farm.owner || "미입력")), farm.phone ? /*#__PURE__*/React.createElement("a", {
+    href: "tel:" + farm.phone,
+    className: "tap-active rounded-xl p-3.5 text-white flex flex-col justify-between",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide text-white/75 flex items-center gap-1"
+  }, /*#__PURE__*/React.createElement(PhoneIcon, {
+    size: 12
+  }), " 연락처 · 통화하기"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1 font-mono"
+  }, farm.phone)) : /*#__PURE__*/React.createElement("div", {
+    className: "rounded-xl p-3.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "연락처"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1"
+  }, "미입력"))), /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl p-3.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "주소"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1"
+  }, farm.address), typeof farm.lat !== "number" && /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] mt-1",
+    style: {
+      color: cssVar("--warn")
+    }
+  }, "지도 좌표 없음 — 지도 탭에는 표시되지 않아요.")), /*#__PURE__*/React.createElement("section", {
+    className: "rounded-xl p-3.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] font-semibold tracking-wide",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "현재 사용 사료 제품"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mt-1"
+  }, farm.product || "미입력")), /*#__PURE__*/React.createElement("section", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mb-1.5"
+  }, "최근 3개월 주문량 추이"), /*#__PURE__*/React.createElement("div", {
+    className: "rounded-xl p-3 border",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement(OrderChart, {
+    orders: farm.orders
+  }))), /*#__PURE__*/React.createElement("section", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mb-1.5"
+  }, "특이사항 메모"), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm rounded-xl p-3.5 whitespace-pre-wrap",
+    style: {
+      background: cssVar("--surface-2"),
+      color: farm.note ? cssVar("--ink") : cssVar("--ink-faint")
+    }
+  }, farm.note || "메모가 없습니다.")), /*#__PURE__*/React.createElement("section", {
+    className: "flex gap-2 pt-1"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => onEdit(farm),
+    className: "tap-active flex-1 py-3 rounded-xl font-bold text-sm border",
+    style: {
+      borderColor: cssVar("--border"),
+      color: cssVar("--ink")
+    }
+  }, "정보 수정"), /*#__PURE__*/React.createElement("button", {
+    onClick: handleDelete,
+    className: "tap-active flex-1 py-3 rounded-xl font-bold text-sm",
+    style: {
+      background: cssVar("--danger-tint"),
+      color: cssVar("--danger")
+    }
+  }, "삭제")))));
+}
+
+/* ---------------- 설정 모달 ---------------- */
+
+function SettingsModal({
+  profile,
+  userEmail,
+  onClose,
+  onSaveProfile,
+  onResetAll,
+  onLogout
+}) {
+  const [name, setName] = useState(profile.name);
+  const [region, setRegion] = useState(profile.region);
+  const [targetRate, setTargetRate] = useState(profile.targetRate);
+  const handleSaveProfile = () => onSaveProfile({
+    name,
+    region,
+    targetRate: Number(targetRate) || 0
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-50 flex items-end justify-center modal-backdrop"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 bg-black/45",
+    onClick: onClose
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "modal-sheet relative w-full max-w-[430px] rounded-t-3xl max-h-[90vh] overflow-y-auto",
+    style: {
+      background: cssVar("--surface")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "sticky top-0 pt-3 pb-3 px-5 rounded-t-3xl border-b flex items-center justify-between",
+    style: {
+      background: cssVar("--surface"),
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "text-base font-bold"
+  }, "설정"), /*#__PURE__*/React.createElement("button", {
+    onClick: onClose,
+    className: "tap-active w-9 h-9 rounded-full flex items-center justify-center",
+    style: {
+      background: cssVar("--surface-2"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement(CloseIcon, {
+    size: 16
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "p-5 space-y-6"
+  }, /*#__PURE__*/React.createElement("section", {
+    className: "space-y-2"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-sm font-bold"
+  }, "계정"), /*#__PURE__*/React.createElement("div", {
+    className: "rounded-xl p-3.5 flex items-center gap-2.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+    style: {
+      background: cssVar("--brand-tint"),
+      color: cssVar("--brand")
+    }
+  }, /*#__PURE__*/React.createElement(UserIcon, {
+    size: 15
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs font-semibold truncate"
+  }, userEmail)), /*#__PURE__*/React.createElement("button", {
+    onClick: onLogout,
+    className: "tap-active w-full py-2.5 rounded-xl font-bold text-sm border",
+    style: {
+      borderColor: cssVar("--border"),
+      color: cssVar("--ink")
+    }
+  }, "로그아웃")), /*#__PURE__*/React.createElement("section", {
+    className: "space-y-3 pt-2 border-t",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-sm font-bold"
+  }, "담당자 정보"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "담당자 이름"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: name,
+    onChange: e => setName(e.target.value),
+    placeholder: "예: 박영업"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "담당 구역"), /*#__PURE__*/React.createElement("input", {
+    className: "field",
+    value: region,
+    onChange: e => setRegion(e.target.value),
+    placeholder: "예: 영업 담당구역 · 남부권역"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "이번 달 목표 달성률 (%)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    max: "999",
+    className: "field font-mono",
+    value: targetRate,
+    onChange: e => setTargetRate(e.target.value)
+  })), /*#__PURE__*/React.createElement("button", {
+    onClick: handleSaveProfile,
+    className: "tap-active w-full py-2.5 rounded-xl text-white font-bold text-sm",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, "담당자 정보 저장")), /*#__PURE__*/React.createElement("section", {
+    className: "space-y-2 pt-2 border-t",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-sm font-bold"
+  }, "데이터 관리"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (window.confirm("등록된 모든 농장 데이터를 삭제할까요?")) onResetAll();
+    },
+    className: "tap-active w-full py-2.5 rounded-xl font-bold text-sm",
+    style: {
+      background: cssVar("--danger-tint"),
+      color: cssVar("--danger")
+    }
+  }, "전체 농장 데이터 초기화")))));
+}
+
+/* ------------------------- 로그인 / 회원가입 ------------------------- */
+
+function AuthScreen({
+  isAdmin,
+  onOpenAdmin
+}) {
+  const [mode, setMode] = useState("login"); // login | signup
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    if (mode === "signup" && password !== password2) {
+      setError("비밀번호가 서로 달라요.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (mode === "signup") {
+        await window.firebase.auth().createUserWithEmailAndPassword(email.trim(), password);
+      } else {
+        await window.firebase.auth().signInWithEmailAndPassword(email.trim(), password);
+      }
+    } catch (err) {
+      setError(mapAuthError(err.code));
+    }
+    setBusy(false);
+  };
+  const handleResetPassword = async () => {
+    setError("");
+    setNotice("");
+    if (!email.trim()) {
+      setError("비밀번호를 재설정할 이메일을 먼저 입력해 주세요.");
+      return;
+    }
+    try {
+      await window.firebase.auth().sendPasswordResetEmail(email.trim());
+      setNotice("비밀번호 재설정 메일을 보냈어요. 메일함을 확인해 주세요.");
+    } catch (err) {
+      setError(mapAuthError(err.code));
+    }
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen flex items-center justify-center px-6",
+    style: {
+      background: cssVar("--bg")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full max-w-[380px] rounded-3xl p-6",
+    style: {
+      background: cssVar("--surface"),
+      boxShadow: "0 20px 44px -20px rgba(0,0,0,0.3)"
+    }
+  }, /*#__PURE__*/React.createElement("h1", {
+    className: "text-xl font-black text-center mb-1"
+  }, "농장 순회 CRM"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-center mb-6",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, mode === "login" ? "계정으로 로그인하세요" : "새 계정을 만들어보세요"), /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleSubmit,
+    className: "space-y-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "이메일"), /*#__PURE__*/React.createElement("input", {
+    type: "email",
+    required: true,
+    className: "field",
+    value: email,
+    onChange: e => setEmail(e.target.value),
+    placeholder: "you@example.com"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "비밀번호"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    required: true,
+    minLength: 6,
+    className: "field",
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: "6자 이상"
+  })), mode === "signup" && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "비밀번호 확인"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    required: true,
+    minLength: 6,
+    className: "field",
+    value: password2,
+    onChange: e => setPassword2(e.target.value)
+  })), error && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs rounded-lg p-2.5",
+    style: {
+      background: cssVar("--danger-tint"),
+      color: cssVar("--danger")
+    }
+  }, error), notice && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs rounded-lg p-2.5",
+    style: {
+      background: cssVar("--ok-tint"),
+      color: cssVar("--ok")
+    }
+  }, notice), /*#__PURE__*/React.createElement("button", {
+    type: "submit",
+    disabled: busy,
+    className: "tap-active w-full py-3 rounded-xl text-white font-bold text-sm disabled:opacity-60",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, busy ? "처리 중..." : mode === "login" ? "로그인" : "회원가입")), mode === "login" && /*#__PURE__*/React.createElement("button", {
+    onClick: handleResetPassword,
+    className: "tap-active w-full text-center text-xs mt-3",
+    style: {
+      color: cssVar("--ink-soft")
+    }
+  }, "비밀번호를 잊으셨나요?"), /*#__PURE__*/React.createElement("div", {
+    className: "mt-5 pt-4 border-t text-center",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setMode(m => m === "login" ? "signup" : "login");
+      setError("");
+      setNotice("");
+    },
+    className: "tap-active text-xs font-semibold",
+    style: {
+      color: cssVar("--brand")
+    }
+  }, mode === "login" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인")), isAdmin && /*#__PURE__*/React.createElement("button", {
+    onClick: onOpenAdmin,
+    className: "tap-active w-full text-center text-[11px] mt-4",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "관리자: 연동 설정 변경")));
+}
+
+/* ---------------- 관리자 전용 연동 설정 화면 (?admin=1 접속 시에만) ---------------- */
+
+function AdminConfigScreen({
+  currentFirebaseConfig,
+  currentNaverId,
+  onSave,
+  onCancel
+}) {
+  const [fbText, setFbText] = useState(currentFirebaseConfig ? JSON.stringify(currentFirebaseConfig, null, 2) : "");
+  const [naverId, setNaverId] = useState(currentNaverId || "");
+  const [error, setError] = useState("");
+  const handleSave = () => {
+    let fbConfig = null;
+    if (fbText.trim()) {
+      const parsed = parseFirebaseConfigSnippet(fbText);
+      if (!parsed.apiKey || !parsed.projectId || !parsed.authDomain) {
+        setError("firebaseConfig 형식을 확인해 주세요. 비워두면 기본 프로젝트를 사용해요.");
+        return;
+      }
+      fbConfig = parsed;
+    }
+    onSave({
+      firebaseConfig: fbConfig,
+      naverClientId: naverId.trim()
+    });
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen flex items-center justify-center px-5 py-10",
+    style: {
+      background: cssVar("--bg")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full max-w-[430px] rounded-3xl p-6",
+    style: {
+      background: cssVar("--surface"),
+      boxShadow: "0 20px 44px -20px rgba(0,0,0,0.3)"
+    }
+  }, /*#__PURE__*/React.createElement("h1", {
+    className: "text-lg font-black mb-1"
+  }, "관리자 설정"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mb-4",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "이 화면은 주소 끝에 ", /*#__PURE__*/React.createElement("span", {
+    className: "font-mono"
+  }, "?admin=1"), " 을 붙였을 때만 보여요. 일반 사용자에게는 노출되지 않습니다."), /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "네이버 지도 Client ID (ncpKeyId)"), /*#__PURE__*/React.createElement("input", {
+    className: "field font-mono mb-4",
+    value: naverId,
+    onChange: e => setNaverId(e.target.value),
+    placeholder: "비워두면 기본값 사용"
+  }), /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "Firebase 설정 덮어쓰기 (선택)"), /*#__PURE__*/React.createElement("textarea", {
+    className: "field font-mono resize-none",
+    rows: 6,
+    value: fbText,
+    onChange: e => setFbText(e.target.value),
+    placeholder: '비워두면 기본 프로젝트를 사용해요.\nconst firebaseConfig = {\n  apiKey: "...",\n  ...\n};'
+  }), error && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs rounded-lg p-2.5 mt-2",
+    style: {
+      background: cssVar("--danger-tint"),
+      color: cssVar("--danger")
+    }
+  }, error), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mt-4"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onCancel,
+    className: "tap-active flex-1 py-3 rounded-xl font-bold text-sm border",
+    style: {
+      borderColor: cssVar("--border"),
+      color: cssVar("--ink")
+    }
+  }, "취소"), /*#__PURE__*/React.createElement("button", {
+    onClick: handleSave,
+    className: "tap-active flex-1 py-3 rounded-xl text-white font-bold text-sm",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, "저장 (새로고침됩니다)"))));
+}
+
+/* ------------------------- 메인 앱 (로그인 이후) ------------------------- */
+
+function App({
+  user,
+  db
+}) {
+  const userDocRef = useMemo(() => db.collection("users").doc(user.uid), [db, user.uid]);
+  const farmsColRef = useMemo(() => userDocRef.collection("farms"), [userDocRef]);
+  const [farms, setFarms] = useState([]);
+  const [farmsReady, setFarmsReady] = useState(false);
+  const [profile, setProfile] = useState({
+    name: "",
+    region: "",
+    targetRate: 0
+  });
+  const clientId = useMemo(() => getNaverClientId(), []);
+  const [view, setView] = useState("list");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [livestockFilter, setLivestockFilter] = useState("all");
+  const [selectedFarm, setSelectedFarm] = useState(null);
+  const [formState, setFormState] = useState(null); // null | { mode: 'create' } | { mode: 'edit', farm }
+  const [showSettings, setShowSettings] = useState(false);
+  useEffect(() => {
+    const unsub = farmsColRef.onSnapshot(snap => {
+      setFarms(snap.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+      setFarmsReady(true);
+    }, () => setFarmsReady(true));
+    return unsub;
+  }, [farmsColRef]);
+  useEffect(() => {
+    const unsub = userDocRef.onSnapshot(doc => {
+      const data = doc.data() || {};
+      setProfile({
+        name: data.name || "",
+        region: data.region || "",
+        targetRate: data.targetRate || 0
+      });
+    });
+    return unsub;
+  }, [userDocRef]);
+  useEffect(() => {
+    if (clientId) ensureNaverMaps(clientId).catch(() => {});
+  }, [clientId]);
+  const todayCount = useMemo(() => farms.filter(f => f.nextVisitDate === todayStr()).length, [farms]);
+  const filteredFarms = useMemo(() => {
+    return farms.filter(f => {
+      if (statusFilter === "risk" && f.status === "normal") return false;
+      if (livestockFilter !== "all" && f.livestock !== livestockFilter) return false;
+      return true;
+    });
+  }, [farms, statusFilter, livestockFilter]);
+  const handleCreateSubmit = farm => {
+    const {
+      id,
+      ...data
+    } = farm;
+    farmsColRef.doc(id).set(data);
+    setFormState(null);
+  };
+  const handleEditSubmit = farm => {
+    const {
+      id,
+      ...data
+    } = farm;
+    farmsColRef.doc(id).set(data);
+    setFormState(null);
+    setSelectedFarm(farm);
+  };
+  const handleDelete = id => {
+    farmsColRef.doc(id).delete();
+    setSelectedFarm(null);
+  };
+  const handleSaveProfile = p => {
+    userDocRef.set(p, {
+      merge: true
+    });
+    setShowSettings(false);
+  };
+  const handleResetAll = async () => {
+    const snap = await farmsColRef.get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    setShowSettings(false);
+  };
+  const handleLogout = () => window.firebase.auth().signOut();
+  if (!farmsReady) return /*#__PURE__*/React.createElement(LoadingScreen, {
+    text: "데이터를 불러오는 중..."
+  });
+  return /*#__PURE__*/React.createElement("div", {
+    id: "app-shell",
+    className: "max-w-[430px] mx-auto min-h-screen pb-24"
+  }, /*#__PURE__*/React.createElement(Header, {
+    profile: profile,
+    todayCount: todayCount,
+    onOpenSettings: () => setShowSettings(true)
+  }), /*#__PURE__*/React.createElement(ViewToggle, {
+    view: view,
+    setView: setView
+  }), view === "list" && farms.length > 0 && /*#__PURE__*/React.createElement(FilterBar, {
+    statusFilter: statusFilter,
+    setStatusFilter: setStatusFilter,
+    livestockFilter: livestockFilter,
+    setLivestockFilter: setLivestockFilter
+  }), view === "list" ? /*#__PURE__*/React.createElement("main", {
+    className: "px-5 mt-4 space-y-3"
+  }, farms.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "text-center py-16 px-4"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-4",
+    style: {
+      background: cssVar("--brand-tint"),
+      color: cssVar("--brand")
+    }
+  }, /*#__PURE__*/React.createElement(SproutIcon, {
+    size: 26
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-semibold"
+  }, "아직 등록된 농장이 없어요"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mt-1.5",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "담당 구역의 농장 정보를 직접 등록해 보세요."), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setFormState({
+      mode: "create"
+    }),
+    className: "tap-active mt-5 px-5 py-2.5 rounded-xl text-white font-bold text-sm inline-flex items-center gap-1.5",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, /*#__PURE__*/React.createElement(PlusIcon, {
+    size: 15
+  }), " 첫 농장 등록하기")) : filteredFarms.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "text-center py-16",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement(SproutIcon, {
+    size: 24
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-medium"
+  }, "조건에 맞는 농장이 없습니다.")) : filteredFarms.map(farm => /*#__PURE__*/React.createElement(FarmCard, {
+    key: farm.id,
+    farm: farm,
+    onClick: () => setSelectedFarm(farm)
+  }))) : /*#__PURE__*/React.createElement(NaverMapView, {
+    farms: farms,
+    clientId: clientId,
+    onSelect: setSelectedFarm
+  }), farms.length > 0 && /*#__PURE__*/React.createElement("button", {
+    onClick: () => setFormState({
+      mode: "create"
+    }),
+    className: "tap-active fixed bottom-6 right-6 w-14 h-14 rounded-full text-white flex items-center justify-center z-30",
+    style: {
+      background: cssVar("--brand"),
+      boxShadow: "0 10px 24px -8px rgba(var(--shadow), 0.5)"
+    },
+    "aria-label": "농장 추가"
+  }, /*#__PURE__*/React.createElement(PlusIcon, {
+    size: 24
+  })), selectedFarm && /*#__PURE__*/React.createElement(FarmDetailModal, {
+    farm: selectedFarm,
+    onClose: () => setSelectedFarm(null),
+    onEdit: farm => {
+      setSelectedFarm(null);
+      setFormState({
+        mode: "edit",
+        farm
+      });
+    },
+    onDelete: handleDelete
+  }), formState && /*#__PURE__*/React.createElement(FarmFormModal, {
+    initialFarm: formState.mode === "edit" ? formState.farm : null,
+    clientId: clientId,
+    onCancel: () => setFormState(null),
+    onSubmit: formState.mode === "edit" ? handleEditSubmit : handleCreateSubmit
+  }), showSettings && /*#__PURE__*/React.createElement(SettingsModal, {
+    profile: profile,
+    userEmail: user.email,
+    onClose: () => setShowSettings(false),
+    onSaveProfile: handleSaveProfile,
+    onResetAll: handleResetAll,
+    onLogout: handleLogout
+  }));
+}
+
+/* ---------------- 인증 게이트 / 부트스트랩 ---------------- */
+
+function AuthGate({
+  config,
+  isAdmin,
+  onOpenAdmin
+}) {
+  const [ready, setReady] = useState(false);
+  const [initError, setInitError] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authUser, setAuthUser] = useState(null);
+  const dbRef = useRef(null);
+  useEffect(() => {
+    try {
+      getFirebaseApp(config);
+      dbRef.current = window.firebase.firestore();
+      setReady(true);
+    } catch (e) {
+      setInitError("Firebase 초기화에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
+    const unsub = window.firebase.auth().onAuthStateChanged(u => {
+      setAuthUser(u);
+      setAuthLoading(false);
+    });
+    return unsub;
+  }, []); // eslint-disable-line
+
+  if (initError) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "min-h-screen flex items-center justify-center px-6 text-center",
+      style: {
+        background: cssVar("--bg")
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+      className: "text-sm font-semibold mb-3",
+      style: {
+        color: cssVar("--danger")
+      }
+    }, initError), /*#__PURE__*/React.createElement("button", {
+      onClick: () => window.location.reload(),
+      className: "tap-active px-5 py-2.5 rounded-xl text-white font-bold text-sm",
+      style: {
+        background: cssVar("--brand")
+      }
+    }, "새로고침")));
+  }
+  if (!ready || authLoading) return /*#__PURE__*/React.createElement(LoadingScreen, null);
+  if (!authUser) return /*#__PURE__*/React.createElement(AuthScreen, {
+    isAdmin: isAdmin,
+    onOpenAdmin: onOpenAdmin
+  });
+  return /*#__PURE__*/React.createElement(App, {
+    user: authUser,
+    db: dbRef.current
+  });
+}
+function Root() {
+  const isAdmin = useMemo(() => isAdminMode(), []);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [overrideConfig, setOverrideConfig] = useState(() => loadJSON(STORAGE_KEYS.firebaseConfig, null));
+  const config = overrideConfig || DEFAULT_FIREBASE_CONFIG;
+  const handleAdminSave = ({
+    firebaseConfig,
+    naverClientId
+  }) => {
+    if (firebaseConfig) saveJSON(STORAGE_KEYS.firebaseConfig, firebaseConfig);else localStorage.removeItem(STORAGE_KEYS.firebaseConfig);
+    if (naverClientId) localStorage.setItem(STORAGE_KEYS.naverOverride, naverClientId);else localStorage.removeItem(STORAGE_KEYS.naverOverride);
+    window.location.reload();
+  };
+  if (showAdmin) {
+    return /*#__PURE__*/React.createElement(AdminConfigScreen, {
+      currentFirebaseConfig: overrideConfig,
+      currentNaverId: loadJSON(STORAGE_KEYS.naverOverride, ""),
+      onSave: handleAdminSave,
+      onCancel: () => setShowAdmin(false)
+    });
+  }
+  return /*#__PURE__*/React.createElement(AuthGate, {
+    config: config,
+    isAdmin: isAdmin,
+    onOpenAdmin: () => setShowAdmin(true)
+  });
+}
+
+/* ---------------- 에러 바운더리 ---------------- */
+
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      error: null
+    };
+  }
+  static getDerivedStateFromError(error) {
+    return {
+      error
+    };
+  }
+  render() {
+    if (this.state.error) {
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: "40px 24px",
+          textAlign: "center",
+          fontFamily: "'Noto Sans KR', sans-serif"
+        }
+      }, /*#__PURE__*/React.createElement("p", {
+        style: {
+          fontWeight: 700,
+          fontSize: "15px",
+          color: "#a63a2f",
+          marginBottom: "6px"
+        }
+      }, "문제가 발생했습니다"), /*#__PURE__*/React.createElement("p", {
+        style: {
+          fontSize: "13px",
+          color: "#5b6b5c",
+          marginBottom: "16px"
+        }
+      }, "새로고침해서 다시 시도해 주세요."), /*#__PURE__*/React.createElement("button", {
+        onClick: () => window.location.reload(),
+        style: {
+          padding: "10px 22px",
+          borderRadius: "10px",
+          background: "#1f5c3d",
+          color: "#fff",
+          border: "none",
+          fontWeight: 700
+        }
+      }, "새로고침"));
+    }
+    return this.props.children;
+  }
+}
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(AppErrorBoundary, null, /*#__PURE__*/React.createElement(Root, null)));
+</script>
+</body>
+</html>
