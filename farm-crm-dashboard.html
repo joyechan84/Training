@@ -13,6 +13,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chart.js/4.4.4/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
 
 <style>
   /* ---------- Design tokens ---------- */
@@ -203,11 +206,22 @@ const STATUS = {
 };
 const MONTH_TAG_LABELS = ["전전월", "전월", "이번달"];
 const STORAGE_KEYS = {
-  farms: "farmCrm.farms.v1",
-  clientId: "farmCrm.naverClientId.v1",
-  profile: "farmCrm.profile.v1"
+  firebaseConfig: "farmCrm.firebaseConfig.v1"
 };
 const cssVar = name => `var(${name})`;
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+function saveJSON(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (e) {/* 저장 공간이 없거나 접근이 막힌 경우 조용히 무시 */}
+}
 
 /* ------------------------- 아이콘 (인라인 SVG) ------------------------- */
 
@@ -266,6 +280,13 @@ const SproutIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/R
 }), /*#__PURE__*/React.createElement("path", {
   d: "M12 10c0-3 1.8-5 5-6 0 3.5-1.3 6-5 6Z"
 }));
+const UserIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M20 21a8 8 0 1 0-16 0"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "7",
+  r: "4"
+}));
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -277,19 +298,6 @@ function daysSince(dateStr) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   return Math.round((today - then) / 86400000);
-}
-function loadJSON(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch (e) {
-    return fallback;
-  }
-}
-function saveJSON(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (e) {/* 저장 공간이 없거나 접근이 막힌 경우 조용히 무시 */}
 }
 
 /* ---------------- 네이버 지도 로더 / 지오코딩 ---------------- */
@@ -338,8 +346,52 @@ function geocodeAddress(address) {
   });
 }
 
+/* ---------------- Firebase 로더 / 인증 유틸 ---------------- */
+
+function getFirebaseApp(config) {
+  if (window.firebase.apps.length) return window.firebase.apps[0];
+  return window.firebase.initializeApp(config);
+}
+function parseFirebaseConfigSnippet(text) {
+  const knownKeys = ["apiKey", "authDomain", "projectId", "storageBucket", "messagingSenderId", "appId", "measurementId"];
+  const result = {};
+  const re = /(\w+)\s*:\s*["']([^"']+)["']/g;
+  let m;
+  while (m = re.exec(text)) {
+    if (knownKeys.includes(m[1])) result[m[1]] = m[2];
+  }
+  return result;
+}
+function mapAuthError(code) {
+  const map = {
+    "auth/email-already-in-use": "이미 가입된 이메일이에요.",
+    "auth/invalid-email": "이메일 형식이 올바르지 않아요.",
+    "auth/weak-password": "비밀번호는 6자 이상이어야 해요.",
+    "auth/user-not-found": "가입되지 않은 이메일이에요.",
+    "auth/wrong-password": "비밀번호가 올바르지 않아요.",
+    "auth/invalid-credential": "이메일 또는 비밀번호가 올바르지 않아요.",
+    "auth/too-many-requests": "시도가 너무 많아요. 잠시 후 다시 시도해 주세요.",
+    "auth/network-request-failed": "네트워크 연결을 확인해 주세요.",
+    "auth/operation-not-allowed": "Firebase 콘솔에서 이메일/비밀번호 로그인 방법을 켜주세요."
+  };
+  return map[code] || "오류가 발생했어요. 잠시 후 다시 시도해 주세요.";
+}
+
 /* ------------------------- 서브 컴포넌트 ------------------------- */
 
+function LoadingScreen({
+  text
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen flex items-center justify-center",
+    style: {
+      background: cssVar("--bg"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm"
+  }, text || "불러오는 중..."));
+}
 function StatusChip({
   status
 }) {
@@ -702,7 +754,7 @@ function NaverMapView({
       style: {
         color: cssVar("--ink-soft")
       }
-    }, "우측 상단 설정(프로필 아이콘)에서 네이버 지도 Client ID를 등록하면", /*#__PURE__*/React.createElement("br", null), "농장 주소가 실제 지도에 표시됩니다."));
+    }, "우측 상단 설정(톱니바퀴)에서 네이버 지도 Client ID를 등록하면", /*#__PURE__*/React.createElement("br", null), "농장 주소가 실제 지도에 표시됩니다."));
   }
   if (mapState === "error") {
     return /*#__PURE__*/React.createElement("div", {
@@ -1149,10 +1201,12 @@ function FarmDetailModal({
 function SettingsModal({
   profile,
   clientId,
+  userEmail,
   onClose,
   onSaveProfile,
   onSaveClientId,
-  onResetAll
+  onResetAll,
+  onLogout
 }) {
   const [name, setName] = useState(profile.name);
   const [region, setRegion] = useState(profile.region);
@@ -1194,7 +1248,36 @@ function SettingsModal({
   }))), /*#__PURE__*/React.createElement("div", {
     className: "p-5 space-y-6"
   }, /*#__PURE__*/React.createElement("section", {
-    className: "space-y-3"
+    className: "space-y-2"
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-sm font-bold"
+  }, "계정"), /*#__PURE__*/React.createElement("div", {
+    className: "rounded-xl p-3.5 flex items-center gap-2.5",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+    style: {
+      background: cssVar("--brand-tint"),
+      color: cssVar("--brand")
+    }
+  }, /*#__PURE__*/React.createElement(UserIcon, {
+    size: 15
+  })), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs font-semibold truncate"
+  }, userEmail)), /*#__PURE__*/React.createElement("button", {
+    onClick: onLogout,
+    className: "tap-active w-full py-2.5 rounded-xl font-bold text-sm border",
+    style: {
+      borderColor: cssVar("--border"),
+      color: cssVar("--ink")
+    }
+  }, "로그아웃")), /*#__PURE__*/React.createElement("section", {
+    className: "space-y-3 pt-2 border-t",
+    style: {
+      borderColor: cssVar("--border")
+    }
   }, /*#__PURE__*/React.createElement("h3", {
     className: "text-sm font-bold"
   }, "담당자 정보"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
@@ -1260,7 +1343,7 @@ function SettingsModal({
     }
   }, "키 발급 방법"), /*#__PURE__*/React.createElement("ol", {
     className: "list-decimal list-inside space-y-0.5"
-  }, /*#__PURE__*/React.createElement("li", null, "console.ncloud.com 에서 네이버 클라우드 플랫폼 계정으로 로그인"), /*#__PURE__*/React.createElement("li", null, "AI·NAVER API → Application 등록 → \"Maps\" 선택"), /*#__PURE__*/React.createElement("li", null, "Web Dynamic Map, Geocoding 서비스 체크"), /*#__PURE__*/React.createElement("li", null, "Web 서비스 URL에 현재 접속 주소(예: http://localhost:8000) 등록"), /*#__PURE__*/React.createElement("li", null, "발급된 Client ID를 위 입력창에 붙여넣기")), /*#__PURE__*/React.createElement("p", {
+  }, /*#__PURE__*/React.createElement("li", null, "console.ncloud.com 에서 네이버 클라우드 플랫폼 계정으로 로그인"), /*#__PURE__*/React.createElement("li", null, "AI·NAVER API → Application 등록 → \"Maps\" 선택"), /*#__PURE__*/React.createElement("li", null, "Dynamic Map, Geocoding 서비스 체크"), /*#__PURE__*/React.createElement("li", null, "Web 서비스 URL에 현재 접속 주소 등록"), /*#__PURE__*/React.createElement("li", null, "발급된 Client ID를 위 입력창에 붙여넣기")), /*#__PURE__*/React.createElement("p", {
     className: "mt-1.5"
   }, "※ 콘솔 화면 구성은 업데이트에 따라 달라질 수 있어요."))), /*#__PURE__*/React.createElement("section", {
     className: "space-y-2 pt-2 border-t",
@@ -1281,24 +1364,267 @@ function SettingsModal({
   }, "전체 농장 데이터 초기화")))));
 }
 
-/* ------------------------- 메인 앱 ------------------------- */
+/* ------------------------- 로그인 / 회원가입 ------------------------- */
 
-function App() {
-  const [farms, setFarms] = useState(() => loadJSON(STORAGE_KEYS.farms, []));
-  const [clientId, setClientId] = useState(() => loadJSON(STORAGE_KEYS.clientId, ""));
-  const [profile, setProfile] = useState(() => loadJSON(STORAGE_KEYS.profile, {
+function AuthScreen() {
+  const [mode, setMode] = useState("login"); // login | signup
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const handleSubmit = async e => {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    if (mode === "signup" && password !== password2) {
+      setError("비밀번호가 서로 달라요.");
+      return;
+    }
+    setBusy(true);
+    try {
+      if (mode === "signup") {
+        await window.firebase.auth().createUserWithEmailAndPassword(email.trim(), password);
+      } else {
+        await window.firebase.auth().signInWithEmailAndPassword(email.trim(), password);
+      }
+    } catch (err) {
+      setError(mapAuthError(err.code));
+    }
+    setBusy(false);
+  };
+  const handleResetPassword = async () => {
+    setError("");
+    setNotice("");
+    if (!email.trim()) {
+      setError("비밀번호를 재설정할 이메일을 먼저 입력해 주세요.");
+      return;
+    }
+    try {
+      await window.firebase.auth().sendPasswordResetEmail(email.trim());
+      setNotice("비밀번호 재설정 메일을 보냈어요. 메일함을 확인해 주세요.");
+    } catch (err) {
+      setError(mapAuthError(err.code));
+    }
+  };
+  const handleResetFirebaseConfig = () => {
+    if (!window.confirm("Firebase 연결 설정을 지우고 처음부터 다시 입력할까요?")) return;
+    localStorage.removeItem(STORAGE_KEYS.firebaseConfig);
+    window.location.reload();
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen flex items-center justify-center px-6",
+    style: {
+      background: cssVar("--bg")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full max-w-[380px] rounded-3xl p-6",
+    style: {
+      background: cssVar("--surface"),
+      boxShadow: "0 20px 44px -20px rgba(0,0,0,0.3)"
+    }
+  }, /*#__PURE__*/React.createElement("h1", {
+    className: "text-xl font-black text-center mb-1"
+  }, "농장 순회 CRM"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs text-center mb-6",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, mode === "login" ? "계정으로 로그인하세요" : "새 계정을 만들어보세요"), /*#__PURE__*/React.createElement("form", {
+    onSubmit: handleSubmit,
+    className: "space-y-3"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "이메일"), /*#__PURE__*/React.createElement("input", {
+    type: "email",
+    required: true,
+    className: "field",
+    value: email,
+    onChange: e => setEmail(e.target.value),
+    placeholder: "you@example.com"
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "비밀번호"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    required: true,
+    minLength: 6,
+    className: "field",
+    value: password,
+    onChange: e => setPassword(e.target.value),
+    placeholder: "6자 이상"
+  })), mode === "signup" && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "비밀번호 확인"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    required: true,
+    minLength: 6,
+    className: "field",
+    value: password2,
+    onChange: e => setPassword2(e.target.value)
+  })), error && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs rounded-lg p-2.5",
+    style: {
+      background: cssVar("--danger-tint"),
+      color: cssVar("--danger")
+    }
+  }, error), notice && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs rounded-lg p-2.5",
+    style: {
+      background: cssVar("--ok-tint"),
+      color: cssVar("--ok")
+    }
+  }, notice), /*#__PURE__*/React.createElement("button", {
+    type: "submit",
+    disabled: busy,
+    className: "tap-active w-full py-3 rounded-xl text-white font-bold text-sm disabled:opacity-60",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, busy ? "처리 중..." : mode === "login" ? "로그인" : "회원가입")), mode === "login" && /*#__PURE__*/React.createElement("button", {
+    onClick: handleResetPassword,
+    className: "tap-active w-full text-center text-xs mt-3",
+    style: {
+      color: cssVar("--ink-soft")
+    }
+  }, "비밀번호를 잊으셨나요?"), /*#__PURE__*/React.createElement("div", {
+    className: "mt-5 pt-4 border-t text-center",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      setMode(m => m === "login" ? "signup" : "login");
+      setError("");
+      setNotice("");
+    },
+    className: "tap-active text-xs font-semibold",
+    style: {
+      color: cssVar("--brand")
+    }
+  }, mode === "login" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인")), /*#__PURE__*/React.createElement("button", {
+    onClick: handleResetFirebaseConfig,
+    className: "tap-active w-full text-center text-[11px] mt-4",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "Firebase 설정 다시 하기")));
+}
+
+/* ---------------- Firebase 최초 설정 화면 ---------------- */
+
+function FirebaseSetupScreen({
+  onSave
+}) {
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  const handleSave = () => {
+    const cfg = parseFirebaseConfigSnippet(text);
+    if (!cfg.apiKey || !cfg.projectId || !cfg.authDomain) {
+      setError("apiKey, authDomain, projectId를 찾지 못했어요. Firebase 콘솔에서 복사한 코드를 그대로 붙여넣어 주세요.");
+      return;
+    }
+    onSave(cfg);
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "min-h-screen flex items-center justify-center px-5 py-10",
+    style: {
+      background: cssVar("--bg")
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "w-full max-w-[430px] rounded-3xl p-6",
+    style: {
+      background: cssVar("--surface"),
+      boxShadow: "0 20px 44px -20px rgba(0,0,0,0.3)"
+    }
+  }, /*#__PURE__*/React.createElement("h1", {
+    className: "text-lg font-black mb-1"
+  }, "Firebase 연결 설정"), /*#__PURE__*/React.createElement("p", {
+    className: "text-xs mb-4",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "로그인과 계정별 데이터 저장을 위해 본인 소유의 Firebase 프로젝트가 필요해요. 아래 순서대로 설정해 주세요."), /*#__PURE__*/React.createElement("div", {
+    className: "text-[11px] leading-relaxed rounded-xl p-3 mb-4",
+    style: {
+      background: cssVar("--surface-2"),
+      color: cssVar("--ink-soft")
+    }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "font-semibold mb-1",
+    style: {
+      color: cssVar("--ink")
+    }
+  }, "설정 방법"), /*#__PURE__*/React.createElement("ol", {
+    className: "list-decimal list-inside space-y-0.5"
+  }, /*#__PURE__*/React.createElement("li", null, "console.firebase.google.com 접속 → \"프로젝트 추가\" (무료, 카드 등록 불필요)"), /*#__PURE__*/React.createElement("li", null, "왼쪽 메뉴 Authentication → 시작하기 → 로그인 방법에서 \"이메일/비밀번호\" 사용 설정"), /*#__PURE__*/React.createElement("li", null, "왼쪽 메뉴 Firestore Database → 데이터베이스 만들기 (프로덕션 모드로 시작해도 OK, 규칙은 아래 참고)"), /*#__PURE__*/React.createElement("li", null, "프로젝트 설정(⚙️ 아이콘) → 아래로 스크롤 → \"내 앱\" → 웹 앱(</> 아이콘) 추가"), /*#__PURE__*/React.createElement("li", null, "화면에 나오는 firebaseConfig 코드 전체를 복사해서 아래 칸에 붙여넣기"))), /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "firebaseConfig 붙여넣기"), /*#__PURE__*/React.createElement("textarea", {
+    className: "field font-mono resize-none",
+    rows: 7,
+    value: text,
+    onChange: e => setText(e.target.value),
+    placeholder: 'const firebaseConfig = {\n  apiKey: "...",\n  authDomain: "...",\n  projectId: "...",\n  ...\n};'
+  }), error && /*#__PURE__*/React.createElement("p", {
+    className: "text-xs rounded-lg p-2.5 mt-2",
+    style: {
+      background: cssVar("--danger-tint"),
+      color: cssVar("--danger")
+    }
+  }, error), /*#__PURE__*/React.createElement("button", {
+    onClick: handleSave,
+    className: "tap-active w-full mt-4 py-3 rounded-xl text-white font-bold text-sm",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, "저장하고 시작하기")));
+}
+
+/* ------------------------- 메인 앱 (로그인 이후) ------------------------- */
+
+function App({
+  user,
+  db
+}) {
+  const userDocRef = useMemo(() => db.collection("users").doc(user.uid), [db, user.uid]);
+  const farmsColRef = useMemo(() => userDocRef.collection("farms"), [userDocRef]);
+  const [farms, setFarms] = useState([]);
+  const [farmsReady, setFarmsReady] = useState(false);
+  const [profile, setProfile] = useState({
     name: "",
     region: "",
-    targetRate: 0
-  }));
+    targetRate: 0,
+    naverClientId: ""
+  });
   const [view, setView] = useState("list");
   const [statusFilter, setStatusFilter] = useState("all");
   const [livestockFilter, setLivestockFilter] = useState("all");
   const [selectedFarm, setSelectedFarm] = useState(null);
   const [formState, setFormState] = useState(null); // null | { mode: 'create' } | { mode: 'edit', farm }
   const [showSettings, setShowSettings] = useState(false);
-  useEffect(() => saveJSON(STORAGE_KEYS.farms, farms), [farms]);
-  useEffect(() => saveJSON(STORAGE_KEYS.profile, profile), [profile]);
+  useEffect(() => {
+    const unsub = farmsColRef.onSnapshot(snap => {
+      setFarms(snap.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+      setFarmsReady(true);
+    }, () => setFarmsReady(true));
+    return unsub;
+  }, [farmsColRef]);
+  useEffect(() => {
+    const unsub = userDocRef.onSnapshot(doc => {
+      const data = doc.data() || {};
+      setProfile({
+        name: data.name || "",
+        region: data.region || "",
+        targetRate: data.targetRate || 0,
+        naverClientId: data.naverClientId || ""
+      });
+    });
+    return unsub;
+  }, [userDocRef]);
+  const clientId = profile.naverClientId;
   useEffect(() => {
     if (clientId) ensureNaverMaps(clientId).catch(() => {});
   }, [clientId]);
@@ -1311,24 +1637,50 @@ function App() {
     });
   }, [farms, statusFilter, livestockFilter]);
   const handleCreateSubmit = farm => {
-    setFarms(list => [farm, ...list]);
+    const {
+      id,
+      ...data
+    } = farm;
+    farmsColRef.doc(id).set(data);
     setFormState(null);
   };
   const handleEditSubmit = farm => {
-    setFarms(list => list.map(f => f.id === farm.id ? farm : f));
+    const {
+      id,
+      ...data
+    } = farm;
+    farmsColRef.doc(id).set(data);
     setFormState(null);
     setSelectedFarm(farm);
   };
   const handleDelete = id => {
-    setFarms(list => list.filter(f => f.id !== id));
+    farmsColRef.doc(id).delete();
     setSelectedFarm(null);
   };
   const handleSaveClientId = id => {
-    setClientId(id);
-    saveJSON(STORAGE_KEYS.clientId, id);
-    setShowSettings(false);
-    window.location.reload();
+    userDocRef.set({
+      naverClientId: id
+    }, {
+      merge: true
+    }).then(() => window.location.reload());
   };
+  const handleSaveProfile = p => {
+    userDocRef.set(p, {
+      merge: true
+    });
+    setShowSettings(false);
+  };
+  const handleResetAll = async () => {
+    const snap = await farmsColRef.get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    setShowSettings(false);
+  };
+  const handleLogout = () => window.firebase.auth().signOut();
+  if (!farmsReady) return /*#__PURE__*/React.createElement(LoadingScreen, {
+    text: "데이터를 불러오는 중..."
+  });
   return /*#__PURE__*/React.createElement("div", {
     id: "app-shell",
     className: "max-w-[430px] mx-auto min-h-screen pb-24"
@@ -1426,42 +1778,136 @@ function App() {
   }), showSettings && /*#__PURE__*/React.createElement(SettingsModal, {
     profile: profile,
     clientId: clientId,
+    userEmail: user.email,
     onClose: () => setShowSettings(false),
-    onSaveProfile: p => {
-      setProfile(p);
-      setShowSettings(false);
-    },
+    onSaveProfile: handleSaveProfile,
     onSaveClientId: handleSaveClientId,
-    onResetAll: () => {
-      setFarms([]);
-      setShowSettings(false);
-    }
+    onResetAll: handleResetAll,
+    onLogout: handleLogout
   }));
 }
+
+/* ---------------- 인증 게이트 / 부트스트랩 ---------------- */
+
+function AuthGate({
+  config
+}) {
+  const [ready, setReady] = useState(false);
+  const [initError, setInitError] = useState("");
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authUser, setAuthUser] = useState(null);
+  const dbRef = useRef(null);
+  useEffect(() => {
+    try {
+      getFirebaseApp(config);
+      dbRef.current = window.firebase.firestore();
+      setReady(true);
+    } catch (e) {
+      setInitError("Firebase 초기화에 실패했어요. 설정 값을 다시 확인해 주세요.");
+      return;
+    }
+    const unsub = window.firebase.auth().onAuthStateChanged(u => {
+      setAuthUser(u);
+      setAuthLoading(false);
+    });
+    return unsub;
+  }, []); // eslint-disable-line
+
+  const handleResetConfig = () => {
+    localStorage.removeItem(STORAGE_KEYS.firebaseConfig);
+    window.location.reload();
+  };
+  if (initError) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "min-h-screen flex items-center justify-center px-6 text-center",
+      style: {
+        background: cssVar("--bg")
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+      className: "text-sm font-semibold mb-3",
+      style: {
+        color: cssVar("--danger")
+      }
+    }, initError), /*#__PURE__*/React.createElement("button", {
+      onClick: handleResetConfig,
+      className: "tap-active px-5 py-2.5 rounded-xl text-white font-bold text-sm",
+      style: {
+        background: cssVar("--brand")
+      }
+    }, "설정 다시 입력하기")));
+  }
+  if (!ready || authLoading) return /*#__PURE__*/React.createElement(LoadingScreen, null);
+  if (!authUser) return /*#__PURE__*/React.createElement(AuthScreen, null);
+  return /*#__PURE__*/React.createElement(App, {
+    user: authUser,
+    db: dbRef.current
+  });
+}
+function Root() {
+  const [config, setConfig] = useState(() => loadJSON(STORAGE_KEYS.firebaseConfig, null));
+  const handleSaveConfig = cfg => {
+    saveJSON(STORAGE_KEYS.firebaseConfig, cfg);
+    window.location.reload();
+  };
+  if (!config) return /*#__PURE__*/React.createElement(FirebaseSetupScreen, {
+    onSave: handleSaveConfig
+  });
+  return /*#__PURE__*/React.createElement(AuthGate, {
+    config: config
+  });
+}
+
+/* ---------------- 에러 바운더리 ---------------- */
+
 class AppErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { error: null };
+    this.state = {
+      error: null
+    };
   }
   static getDerivedStateFromError(error) {
-    return { error };
+    return {
+      error
+    };
   }
   render() {
     if (this.state.error) {
-      return React.createElement("div", {
-        style: { padding: "40px 24px", textAlign: "center", fontFamily: "'Noto Sans KR', sans-serif" }
-      },
-        React.createElement("p", { style: { fontWeight: 700, fontSize: "15px", color: "#a63a2f", marginBottom: "6px" } }, "문제가 발생했습니다"),
-        React.createElement("p", { style: { fontSize: "13px", color: "#5b6b5c", marginBottom: "16px" } }, "새로고침해서 다시 시도해 주세요."),
-        React.createElement("button", {
-          onClick: () => window.location.reload(),
-          style: { padding: "10px 22px", borderRadius: "10px", background: "#1f5c3d", color: "#fff", border: "none", fontWeight: 700 }
-        }, "새로고침")
-      );
+      return /*#__PURE__*/React.createElement("div", {
+        style: {
+          padding: "40px 24px",
+          textAlign: "center",
+          fontFamily: "'Noto Sans KR', sans-serif"
+        }
+      }, /*#__PURE__*/React.createElement("p", {
+        style: {
+          fontWeight: 700,
+          fontSize: "15px",
+          color: "#a63a2f",
+          marginBottom: "6px"
+        }
+      }, "문제가 발생했습니다"), /*#__PURE__*/React.createElement("p", {
+        style: {
+          fontSize: "13px",
+          color: "#5b6b5c",
+          marginBottom: "16px"
+        }
+      }, "새로고침해서 다시 시도해 주세요."), /*#__PURE__*/React.createElement("button", {
+        onClick: () => window.location.reload(),
+        style: {
+          padding: "10px 22px",
+          borderRadius: "10px",
+          background: "#1f5c3d",
+          color: "#fff",
+          border: "none",
+          fontWeight: 700
+        }
+      }, "새로고침"));
     }
     return this.props.children;
   }
 }
-ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(AppErrorBoundary, null, /*#__PURE__*/React.createElement(App, null)));</script>
+ReactDOM.createRoot(document.getElementById("root")).render(/*#__PURE__*/React.createElement(AppErrorBoundary, null, /*#__PURE__*/React.createElement(Root, null)));
+</script>
 </body>
 </html>
