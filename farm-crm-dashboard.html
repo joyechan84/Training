@@ -206,8 +206,32 @@ const STATUS = {
 };
 const MONTH_TAG_LABELS = ["전전월", "전월", "이번달"];
 const STORAGE_KEYS = {
-  firebaseConfig: "farmCrm.firebaseConfig.v1"
+  firebaseConfig: "farmCrm.firebaseConfig.v1",
+  naverOverride: "farmCrm.naverClientIdOverride.v1"
 };
+
+// 배포자가 한 번만 설정해두는 기본값 — 일반 사용자는 이 값을 몰라도 됩니다.
+// ?admin=1 로 접속했을 때만 이 값을 덮어쓸 수 있는 화면이 보입니다.
+const DEFAULT_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCHcFnxwzKqoD6dk75_Cgc14k-mLsC3Sao",
+  authDomain: "farm-management-32f1c.firebaseapp.com",
+  projectId: "farm-management-32f1c",
+  storageBucket: "farm-management-32f1c.firebasestorage.app",
+  messagingSenderId: "645209960398",
+  appId: "1:645209960398:web:04fe19b991da9726a3459f",
+  measurementId: "G-F8PNW4WWSZ"
+};
+const DEFAULT_NAVER_CLIENT_ID = "";
+function isAdminMode() {
+  try {
+    return new URLSearchParams(window.location.search).get("admin") === "1";
+  } catch (e) {
+    return false;
+  }
+}
+function getNaverClientId() {
+  return loadJSON(STORAGE_KEYS.naverOverride, null) || DEFAULT_NAVER_CLIENT_ID;
+}
 const cssVar = name => `var(${name})`;
 function loadJSON(key, fallback) {
   try {
@@ -1201,24 +1225,20 @@ function FarmDetailModal({
 
 function SettingsModal({
   profile,
-  clientId,
   userEmail,
   onClose,
   onSaveProfile,
-  onSaveClientId,
   onResetAll,
   onLogout
 }) {
   const [name, setName] = useState(profile.name);
   const [region, setRegion] = useState(profile.region);
   const [targetRate, setTargetRate] = useState(profile.targetRate);
-  const [keyInput, setKeyInput] = useState(clientId);
   const handleSaveProfile = () => onSaveProfile({
     name,
     region,
     targetRate: Number(targetRate) || 0
   });
-  const handleSaveKey = () => onSaveClientId(keyInput.trim());
   return /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-50 flex items-end justify-center modal-backdrop"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1311,42 +1331,6 @@ function SettingsModal({
       background: cssVar("--brand")
     }
   }, "담당자 정보 저장")), /*#__PURE__*/React.createElement("section", {
-    className: "space-y-3 pt-2 border-t",
-    style: {
-      borderColor: cssVar("--border")
-    }
-  }, /*#__PURE__*/React.createElement("h3", {
-    className: "text-sm font-bold"
-  }, "네이버 지도 연동"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "field-label"
-  }, "네이버 지도 Client ID (ncpKeyId)"), /*#__PURE__*/React.createElement("input", {
-    className: "field font-mono",
-    value: keyInput,
-    onChange: e => setKeyInput(e.target.value),
-    placeholder: "예: abcd1234ef"
-  })), /*#__PURE__*/React.createElement("button", {
-    onClick: handleSaveKey,
-    className: "tap-active w-full py-2.5 rounded-xl font-bold text-sm border",
-    style: {
-      borderColor: cssVar("--brand"),
-      color: cssVar("--brand")
-    }
-  }, "키 저장 (저장 후 새로고침됩니다)"), /*#__PURE__*/React.createElement("div", {
-    className: "text-[11px] leading-relaxed rounded-xl p-3",
-    style: {
-      background: cssVar("--surface-2"),
-      color: cssVar("--ink-soft")
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "font-semibold mb-1",
-    style: {
-      color: cssVar("--ink")
-    }
-  }, "키 발급 방법"), /*#__PURE__*/React.createElement("ol", {
-    className: "list-decimal list-inside space-y-0.5"
-  }, /*#__PURE__*/React.createElement("li", null, "console.ncloud.com 에서 네이버 클라우드 플랫폼 계정으로 로그인"), /*#__PURE__*/React.createElement("li", null, "AI·NAVER API → Application 등록 → \"Maps\" 선택"), /*#__PURE__*/React.createElement("li", null, "Dynamic Map, Geocoding 서비스 체크"), /*#__PURE__*/React.createElement("li", null, "Web 서비스 URL에 현재 접속 주소 등록"), /*#__PURE__*/React.createElement("li", null, "발급된 Client ID를 위 입력창에 붙여넣기")), /*#__PURE__*/React.createElement("p", {
-    className: "mt-1.5"
-  }, "※ 콘솔 화면 구성은 업데이트에 따라 달라질 수 있어요."))), /*#__PURE__*/React.createElement("section", {
     className: "space-y-2 pt-2 border-t",
     style: {
       borderColor: cssVar("--border")
@@ -1367,7 +1351,10 @@ function SettingsModal({
 
 /* ------------------------- 로그인 / 회원가입 ------------------------- */
 
-function AuthScreen() {
+function AuthScreen({
+  isAdmin,
+  onOpenAdmin
+}) {
   const [mode, setMode] = useState("login"); // login | signup
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -1408,11 +1395,6 @@ function AuthScreen() {
     } catch (err) {
       setError(mapAuthError(err.code));
     }
-  };
-  const handleResetFirebaseConfig = () => {
-    if (!window.confirm("Firebase 연결 설정을 지우고 처음부터 다시 입력할까요?")) return;
-    localStorage.removeItem(STORAGE_KEYS.firebaseConfig);
-    window.location.reload();
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "min-h-screen flex items-center justify-center px-6",
@@ -1503,29 +1485,40 @@ function AuthScreen() {
     style: {
       color: cssVar("--brand")
     }
-  }, mode === "login" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인")), /*#__PURE__*/React.createElement("button", {
-    onClick: handleResetFirebaseConfig,
+  }, mode === "login" ? "계정이 없으신가요? 회원가입" : "이미 계정이 있으신가요? 로그인")), isAdmin && /*#__PURE__*/React.createElement("button", {
+    onClick: onOpenAdmin,
     className: "tap-active w-full text-center text-[11px] mt-4",
     style: {
       color: cssVar("--ink-faint")
     }
-  }, "Firebase 설정 다시 하기")));
+  }, "관리자: 연동 설정 변경")));
 }
 
-/* ---------------- Firebase 최초 설정 화면 ---------------- */
+/* ---------------- 관리자 전용 연동 설정 화면 (?admin=1 접속 시에만) ---------------- */
 
-function FirebaseSetupScreen({
-  onSave
+function AdminConfigScreen({
+  currentFirebaseConfig,
+  currentNaverId,
+  onSave,
+  onCancel
 }) {
-  const [text, setText] = useState("");
+  const [fbText, setFbText] = useState(currentFirebaseConfig ? JSON.stringify(currentFirebaseConfig, null, 2) : "");
+  const [naverId, setNaverId] = useState(currentNaverId || "");
   const [error, setError] = useState("");
   const handleSave = () => {
-    const cfg = parseFirebaseConfigSnippet(text);
-    if (!cfg.apiKey || !cfg.projectId || !cfg.authDomain) {
-      setError("apiKey, authDomain, projectId를 찾지 못했어요. Firebase 콘솔에서 복사한 코드를 그대로 붙여넣어 주세요.");
-      return;
+    let fbConfig = null;
+    if (fbText.trim()) {
+      const parsed = parseFirebaseConfigSnippet(fbText);
+      if (!parsed.apiKey || !parsed.projectId || !parsed.authDomain) {
+        setError("firebaseConfig 형식을 확인해 주세요. 비워두면 기본 프로젝트를 사용해요.");
+        return;
+      }
+      fbConfig = parsed;
     }
-    onSave(cfg);
+    onSave({
+      firebaseConfig: fbConfig,
+      naverClientId: naverId.trim()
+    });
   };
   return /*#__PURE__*/React.createElement("div", {
     className: "min-h-screen flex items-center justify-center px-5 py-10",
@@ -1540,45 +1533,50 @@ function FirebaseSetupScreen({
     }
   }, /*#__PURE__*/React.createElement("h1", {
     className: "text-lg font-black mb-1"
-  }, "Firebase 연결 설정"), /*#__PURE__*/React.createElement("p", {
+  }, "관리자 설정"), /*#__PURE__*/React.createElement("p", {
     className: "text-xs mb-4",
     style: {
       color: cssVar("--ink-faint")
     }
-  }, "로그인과 계정별 데이터 저장을 위해 본인 소유의 Firebase 프로젝트가 필요해요. 아래 순서대로 설정해 주세요."), /*#__PURE__*/React.createElement("div", {
-    className: "text-[11px] leading-relaxed rounded-xl p-3 mb-4",
-    style: {
-      background: cssVar("--surface-2"),
-      color: cssVar("--ink-soft")
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "font-semibold mb-1",
-    style: {
-      color: cssVar("--ink")
-    }
-  }, "설정 방법"), /*#__PURE__*/React.createElement("ol", {
-    className: "list-decimal list-inside space-y-0.5"
-  }, /*#__PURE__*/React.createElement("li", null, "console.firebase.google.com 접속 → \"프로젝트 추가\" (무료, 카드 등록 불필요)"), /*#__PURE__*/React.createElement("li", null, "왼쪽 메뉴 Authentication → 시작하기 → 로그인 방법에서 \"이메일/비밀번호\" 사용 설정"), /*#__PURE__*/React.createElement("li", null, "왼쪽 메뉴 Firestore Database → 데이터베이스 만들기 (프로덕션 모드로 시작해도 OK, 규칙은 아래 참고)"), /*#__PURE__*/React.createElement("li", null, "프로젝트 설정(⚙️ 아이콘) → 아래로 스크롤 → \"내 앱\" → 웹 앱(</> 아이콘) 추가"), /*#__PURE__*/React.createElement("li", null, "화면에 나오는 firebaseConfig 코드 전체를 복사해서 아래 칸에 붙여넣기"))), /*#__PURE__*/React.createElement("label", {
+  }, "이 화면은 주소 끝에 ", /*#__PURE__*/React.createElement("span", {
+    className: "font-mono"
+  }, "?admin=1"), " 을 붙였을 때만 보여요. 일반 사용자에게는 노출되지 않습니다."), /*#__PURE__*/React.createElement("label", {
     className: "field-label"
-  }, "firebaseConfig 붙여넣기"), /*#__PURE__*/React.createElement("textarea", {
+  }, "네이버 지도 Client ID (ncpKeyId)"), /*#__PURE__*/React.createElement("input", {
+    className: "field font-mono mb-4",
+    value: naverId,
+    onChange: e => setNaverId(e.target.value),
+    placeholder: "비워두면 기본값 사용"
+  }), /*#__PURE__*/React.createElement("label", {
+    className: "field-label"
+  }, "Firebase 설정 덮어쓰기 (선택)"), /*#__PURE__*/React.createElement("textarea", {
     className: "field font-mono resize-none",
-    rows: 7,
-    value: text,
-    onChange: e => setText(e.target.value),
-    placeholder: 'const firebaseConfig = {\n  apiKey: "...",\n  authDomain: "...",\n  projectId: "...",\n  ...\n};'
+    rows: 6,
+    value: fbText,
+    onChange: e => setFbText(e.target.value),
+    placeholder: '비워두면 기본 프로젝트를 사용해요.\nconst firebaseConfig = {\n  apiKey: "...",\n  ...\n};'
   }), error && /*#__PURE__*/React.createElement("p", {
     className: "text-xs rounded-lg p-2.5 mt-2",
     style: {
       background: cssVar("--danger-tint"),
       color: cssVar("--danger")
     }
-  }, error), /*#__PURE__*/React.createElement("button", {
+  }, error), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 mt-4"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: onCancel,
+    className: "tap-active flex-1 py-3 rounded-xl font-bold text-sm border",
+    style: {
+      borderColor: cssVar("--border"),
+      color: cssVar("--ink")
+    }
+  }, "취소"), /*#__PURE__*/React.createElement("button", {
     onClick: handleSave,
-    className: "tap-active w-full mt-4 py-3 rounded-xl text-white font-bold text-sm",
+    className: "tap-active flex-1 py-3 rounded-xl text-white font-bold text-sm",
     style: {
       background: cssVar("--brand")
     }
-  }, "저장하고 시작하기")));
+  }, "저장 (새로고침됩니다)"))));
 }
 
 /* ------------------------- 메인 앱 (로그인 이후) ------------------------- */
@@ -1594,9 +1592,9 @@ function App({
   const [profile, setProfile] = useState({
     name: "",
     region: "",
-    targetRate: 0,
-    naverClientId: ""
+    targetRate: 0
   });
+  const clientId = useMemo(() => getNaverClientId(), []);
   const [view, setView] = useState("list");
   const [statusFilter, setStatusFilter] = useState("all");
   const [livestockFilter, setLivestockFilter] = useState("all");
@@ -1619,13 +1617,11 @@ function App({
       setProfile({
         name: data.name || "",
         region: data.region || "",
-        targetRate: data.targetRate || 0,
-        naverClientId: data.naverClientId || ""
+        targetRate: data.targetRate || 0
       });
     });
     return unsub;
   }, [userDocRef]);
-  const clientId = profile.naverClientId;
   useEffect(() => {
     if (clientId) ensureNaverMaps(clientId).catch(() => {});
   }, [clientId]);
@@ -1657,13 +1653,6 @@ function App({
   const handleDelete = id => {
     farmsColRef.doc(id).delete();
     setSelectedFarm(null);
-  };
-  const handleSaveClientId = id => {
-    userDocRef.set({
-      naverClientId: id
-    }, {
-      merge: true
-    }).then(() => window.location.reload());
   };
   const handleSaveProfile = p => {
     userDocRef.set(p, {
@@ -1778,11 +1767,9 @@ function App({
     onSubmit: formState.mode === "edit" ? handleEditSubmit : handleCreateSubmit
   }), showSettings && /*#__PURE__*/React.createElement(SettingsModal, {
     profile: profile,
-    clientId: clientId,
     userEmail: user.email,
     onClose: () => setShowSettings(false),
     onSaveProfile: handleSaveProfile,
-    onSaveClientId: handleSaveClientId,
     onResetAll: handleResetAll,
     onLogout: handleLogout
   }));
@@ -1791,7 +1778,9 @@ function App({
 /* ---------------- 인증 게이트 / 부트스트랩 ---------------- */
 
 function AuthGate({
-  config
+  config,
+  isAdmin,
+  onOpenAdmin
 }) {
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState("");
@@ -1804,7 +1793,7 @@ function AuthGate({
       dbRef.current = window.firebase.firestore();
       setReady(true);
     } catch (e) {
-      setInitError("Firebase 초기화에 실패했어요. 설정 값을 다시 확인해 주세요.");
+      setInitError("Firebase 초기화에 실패했어요. 잠시 후 다시 시도해 주세요.");
       return;
     }
     const unsub = window.firebase.auth().onAuthStateChanged(u => {
@@ -1814,10 +1803,6 @@ function AuthGate({
     return unsub;
   }, []); // eslint-disable-line
 
-  const handleResetConfig = () => {
-    localStorage.removeItem(STORAGE_KEYS.firebaseConfig);
-    window.location.reload();
-  };
   if (initError) {
     return /*#__PURE__*/React.createElement("div", {
       className: "min-h-screen flex items-center justify-center px-6 text-center",
@@ -1830,31 +1815,48 @@ function AuthGate({
         color: cssVar("--danger")
       }
     }, initError), /*#__PURE__*/React.createElement("button", {
-      onClick: handleResetConfig,
+      onClick: () => window.location.reload(),
       className: "tap-active px-5 py-2.5 rounded-xl text-white font-bold text-sm",
       style: {
         background: cssVar("--brand")
       }
-    }, "설정 다시 입력하기")));
+    }, "새로고침")));
   }
   if (!ready || authLoading) return /*#__PURE__*/React.createElement(LoadingScreen, null);
-  if (!authUser) return /*#__PURE__*/React.createElement(AuthScreen, null);
+  if (!authUser) return /*#__PURE__*/React.createElement(AuthScreen, {
+    isAdmin: isAdmin,
+    onOpenAdmin: onOpenAdmin
+  });
   return /*#__PURE__*/React.createElement(App, {
     user: authUser,
     db: dbRef.current
   });
 }
 function Root() {
-  const [config, setConfig] = useState(() => loadJSON(STORAGE_KEYS.firebaseConfig, null));
-  const handleSaveConfig = cfg => {
-    saveJSON(STORAGE_KEYS.firebaseConfig, cfg);
+  const isAdmin = useMemo(() => isAdminMode(), []);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [overrideConfig, setOverrideConfig] = useState(() => loadJSON(STORAGE_KEYS.firebaseConfig, null));
+  const config = overrideConfig || DEFAULT_FIREBASE_CONFIG;
+  const handleAdminSave = ({
+    firebaseConfig,
+    naverClientId
+  }) => {
+    if (firebaseConfig) saveJSON(STORAGE_KEYS.firebaseConfig, firebaseConfig);else localStorage.removeItem(STORAGE_KEYS.firebaseConfig);
+    if (naverClientId) localStorage.setItem(STORAGE_KEYS.naverOverride, naverClientId);else localStorage.removeItem(STORAGE_KEYS.naverOverride);
     window.location.reload();
   };
-  if (!config) return /*#__PURE__*/React.createElement(FirebaseSetupScreen, {
-    onSave: handleSaveConfig
-  });
+  if (showAdmin) {
+    return /*#__PURE__*/React.createElement(AdminConfigScreen, {
+      currentFirebaseConfig: overrideConfig,
+      currentNaverId: loadJSON(STORAGE_KEYS.naverOverride, ""),
+      onSave: handleAdminSave,
+      onCancel: () => setShowAdmin(false)
+    });
+  }
   return /*#__PURE__*/React.createElement(AuthGate, {
-    config: config
+    config: config,
+    isAdmin: isAdmin,
+    onOpenAdmin: () => setShowAdmin(true)
   });
 }
 
