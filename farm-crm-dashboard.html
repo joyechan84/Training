@@ -372,9 +372,10 @@ function mapAuthError(code) {
     "auth/invalid-credential": "이메일 또는 비밀번호가 올바르지 않아요.",
     "auth/too-many-requests": "시도가 너무 많아요. 잠시 후 다시 시도해 주세요.",
     "auth/network-request-failed": "네트워크 연결을 확인해 주세요.",
-    "auth/operation-not-allowed": "Firebase 콘솔에서 이메일/비밀번호 로그인 방법을 켜주세요."
+    "auth/operation-not-allowed": "Firebase 콘솔에서 이메일/비밀번호 로그인 방법을 켜주세요.",
+    "auth/unauthorized-domain": "이 주소가 Firebase에 승인되지 않았어요. Authentication → Settings → 승인된 도메인에 이 사이트 주소를 추가해 주세요."
   };
-  return map[code] || "오류가 발생했어요. 잠시 후 다시 시도해 주세요.";
+  return map[code] || `오류가 발생했어요 (${code || "코드 없음"}). 잠시 후 다시 시도해 주세요.`;
 }
 
 /* ------------------------- 서브 컴포넌트 ------------------------- */
