@@ -3,10 +3,17 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { InstrumentId, InstrumentMix } from "@/types";
 
-const INSTRUMENT_ORDER: InstrumentId[] = ["drums", "bass", "piano", "synth"];
+const INSTRUMENT_ORDER: InstrumentId[] = [
+  "drums",
+  "bass",
+  "guitar",
+  "piano",
+  "synth",
+];
 const INSTRUMENT_LABEL: Record<InstrumentId, string> = {
   drums: "🥁 드럼",
   bass: "🎸 베이스",
+  guitar: "🎸 일렉기타",
   piano: "🎹 피아노",
   synth: "🎛️ 신디",
 };

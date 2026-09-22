@@ -13,9 +13,14 @@ import { InstrumentIndicator } from "@/components/InstrumentIndicator";
 import { NowPlayingHeader } from "@/components/NowPlayingHeader";
 import { DEMO_SONG } from "@/constants/demoSong";
 import { useVoiceIntentEngine } from "@/hooks/useVoiceIntentEngine";
-import { VoiceIntent } from "@/types";
+import { SongConfig, VoiceIntent } from "@/types";
 
-export function MainScreen() {
+interface MainScreenProps {
+  /** 콘티에서 선택된 학습 곡. 없으면 배선 확인용 데모 곡을 사용한다. */
+  song?: SongConfig;
+}
+
+export function MainScreen({ song = DEMO_SONG }: MainScreenProps) {
   const {
     state,
     loadSong,
@@ -29,8 +34,9 @@ export function MainScreen() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadSong(DEMO_SONG).finally(() => setIsLoading(false));
-  }, [loadSong]);
+    setIsLoading(true);
+    loadSong(song).finally(() => setIsLoading(false));
+  }, [loadSong, song]);
 
   const handleIntent = useCallback(
     (intent: VoiceIntent) => {
@@ -70,8 +76,8 @@ export function MainScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <NowPlayingHeader
         state={state}
-        songTitle={DEMO_SONG.title}
-        baseKey={DEMO_SONG.baseKey}
+        songTitle={song.title}
+        baseKey={song.baseKey}
       />
 
       <InstrumentIndicator mix={state.mix} />
@@ -102,6 +108,12 @@ export function MainScreen() {
           color="#D08770"
           active={state.currentSection === "CHORUS"}
           onPress={() => goToSection("CHORUS")}
+        />
+        <BigActionButton
+          label="기타 솔로"
+          color="#B48EAD"
+          active={state.currentSection === "SOLO"}
+          onPress={() => goToSection("SOLO")}
         />
         <BigActionButton
           label="조용히"

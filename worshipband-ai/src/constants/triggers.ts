@@ -30,6 +30,10 @@ export const TRIGGER_RULES: TriggerRule[] = [
     intent: { type: "SECTION", section: "BRIDGE" },
   },
   {
+    patterns: ["솔로", "기타 솔로", "솔로 가겠습니다", "간주"],
+    intent: { type: "SECTION", section: "SOLO" },
+  },
+  {
     patterns: ["조용히", "묵상", "잠잠히", "고요히", "낮은 목소리로"],
     intent: { type: "SECTION", section: "QUIET" },
   },
