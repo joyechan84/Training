@@ -30,6 +30,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Remove expo-dev-client for this standalone build
+        # expo-dev-client (and its expo-dev-launcher/expo-dev-menu deps) is
+        # dev-only tooling: during `expo prebuild` it rewrites the generated
+        # MainApplication/MainActivity to boot into a "connect to a Metro dev
+        # server" launcher instead of the app itself. A release APK built with
+        # it still present installed fine on a real phone but crashed on
+        # launch. Standalone/preview builds shouldn't include it at all (this
+        # mirrors how EAS itself only includes it in "development" build
+        # profiles, never "preview"/"production"). --no-save keeps this local
+        # to the CI runner's checkout; package.json/lockfile in the repo are
+        # untouched, so `expo start --dev-client` still works for local dev.
+        run: npm uninstall expo-dev-client --no-save
+
       - name: Expo prebuild (generate native android/ project)
         env:
           CI: "1"
@@ -55,32 +68,14 @@ jobs:
           path: worshipband-ai/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
 
-      # A real device install "installs fine but won't open" (crash on launch).
-      # There's no way to pull logcat off that phone from here, so reproduce it
-      # on an emulator in CI instead and capture the actual crash trace.
-      - name: Boot emulator, install + launch APK, capture crash logcat
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 34
-          target: google_apis
-          arch: x86_64
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          disable-animations: true
-          script: |
-            adb logcat -c
-            adb install -r worshipband-ai/android/app/build/outputs/apk/release/app-release.apk
-            adb shell monkey -p com.worshipbandai.app -c android.intent.category.LAUNCHER 1
-            sleep 10
-            adb shell dumpsys activity activities | grep -A5 mResumedActivity || true
-            adb logcat -d > /tmp/full-logcat.txt
-            echo "----- FATAL/AndroidRuntime/worshipbandai lines -----"
-            grep -E "FATAL EXCEPTION|AndroidRuntime|worshipbandai|ReactNativeJS" /tmp/full-logcat.txt | tail -200 || echo "(no matching lines found)"
-
-      - name: Upload full logcat
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: emulator-logcat
-          path: /tmp/full-logcat.txt
-          retention-days: 14
+      # Standard GitHub-hosted runners don't have KVM/hardware acceleration,
+      # so a full emulator boot (tried in an earlier run) just hung instead of
+      # giving a crash log. This is a cheap static sanity check instead: dump
+      # the built APK's manifest/badging so obviously broken entries (missing
+      # launcher activity, bad package name, etc.) show up in the job log
+      # without needing to actually run it anywhere.
+      - name: Dump APK badging (static sanity check)
+        run: |
+          BUILD_TOOLS=$(ls "$ANDROID_HOME"/build-tools | sort -V | tail -1)
+          "$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt2" dump badging \
+            android/app/build/outputs/apk/release/app-release.apk
