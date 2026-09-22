@@ -48,6 +48,17 @@ jobs:
           EXPO_NO_TELEMETRY: "1"
         run: npx expo prebuild -p android --no-install
 
+      - name: Dump generated build config (debugging aid, no emulator needed)
+        # A "installs fine, crashes on launch" release build is very often
+        # New Architecture / JSC-vs-Hermes / ProGuard related. Printing these
+        # straight from the generated project is instant and doesn't depend
+        # on the emulator job (which has been unreliable in this CI setup).
+        run: |
+          echo "----- gradle.properties -----"
+          cat android/gradle.properties
+          echo "----- app/build.gradle release buildType -----"
+          grep -A15 "buildTypes {" android/app/build.gradle || true
+
       - name: Build release APK
         # A debug build (assembleDebug) doesn't embed the JS bundle — it expects
         # a Metro dev server to connect to at runtime, which is why opening it

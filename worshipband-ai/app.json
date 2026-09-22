@@ -7,6 +7,8 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": ["**/*"],
+    "jsEngine": "hermes",
+    "newArchEnabled": false,
     "splash": {
       "backgroundColor": "#2E3440",
       "resizeMode": "contain"
