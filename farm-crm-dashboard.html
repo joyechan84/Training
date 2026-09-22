@@ -16,6 +16,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-storage-compat.js"></script>
 
 <style>
   /* ---------- Design tokens ---------- */
@@ -310,6 +311,13 @@ const UserIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/Rea
   cy: "7",
   r: "4"
 }));
+const CameraIcon = p => /*#__PURE__*/React.createElement(Icon, p, /*#__PURE__*/React.createElement("path", {
+  d: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"
+}), /*#__PURE__*/React.createElement("circle", {
+  cx: "12",
+  cy: "13",
+  r: "4"
+}));
 function todayStr() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -386,6 +394,22 @@ function geocodeAddress(address) {
 function getFirebaseApp(config) {
   if (window.firebase.apps.length) return window.firebase.apps[0];
   return window.firebase.initializeApp(config);
+}
+const MAX_PHOTO_BYTES = 10 * 1024 * 1024; // 10MB
+
+async function uploadFarmPhoto(uid, farmId, file) {
+  if (file.size > MAX_PHOTO_BYTES) throw new Error("FILE_TOO_LARGE");
+  const path = `users/${uid}/farms/${farmId}/${Date.now()}_${file.name}`;
+  const ref = window.firebase.storage().ref(path);
+  await ref.put(file);
+  const url = await ref.getDownloadURL();
+  return {
+    url,
+    path
+  };
+}
+function deleteFarmPhoto(path) {
+  return window.firebase.storage().ref(path).delete();
 }
 function parseFirebaseConfigSnippet(text) {
   const knownKeys = ["apiKey", "authDomain", "projectId", "storageBucket", "messagingSenderId", "appId", "measurementId"];
@@ -1187,13 +1211,102 @@ function FarmFormModal({
   }, saving ? "좌표 확인 중..." : isEdit ? "수정 완료" : "농장 등록"))));
 }
 
+/* ---------------- 농장 사진 ---------------- */
+
+function PhotoSection({
+  farm,
+  onAddPhoto,
+  onDeletePhoto
+}) {
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
+  const photos = farm.photos || [];
+  const handleFileChange = async e => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      await onAddPhoto(file);
+    } catch (err) {
+      window.alert(err && err.message === "FILE_TOO_LARGE" ? "10MB 이하 사진만 업로드할 수 있어요." : "사진 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.");
+    }
+    setUploading(false);
+  };
+  const handleDelete = photo => {
+    if (!window.confirm("이 사진을 삭제할까요?")) return;
+    setLightboxPhoto(null);
+    onDeletePhoto(photo);
+  };
+  return /*#__PURE__*/React.createElement("section", null, /*#__PURE__*/React.createElement("p", {
+    className: "text-sm font-bold mb-1.5"
+  }, "농장 사진"), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2 overflow-x-auto pb-1"
+  }, photos.map((p, i) => /*#__PURE__*/React.createElement("button", {
+    key: p.path || i,
+    type: "button",
+    onClick: () => setLightboxPhoto(p),
+    className: "tap-active shrink-0 w-20 h-20 rounded-xl overflow-hidden border",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("img", {
+    src: p.url,
+    alt: "",
+    className: "w-full h-full object-cover"
+  }))), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => fileInputRef.current && fileInputRef.current.click(),
+    disabled: uploading,
+    className: "tap-active shrink-0 w-20 h-20 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-1 disabled:opacity-50",
+    style: {
+      borderColor: cssVar("--border"),
+      color: cssVar("--ink-faint")
+    }
+  }, /*#__PURE__*/React.createElement(CameraIcon, {
+    size: 18
+  }), /*#__PURE__*/React.createElement("span", {
+    className: "text-[10px]"
+  }, uploading ? "업로드 중" : "추가")), /*#__PURE__*/React.createElement("input", {
+    ref: fileInputRef,
+    type: "file",
+    accept: "image/*",
+    capture: "environment",
+    className: "hidden",
+    onChange: handleFileChange
+  })), lightboxPhoto && /*#__PURE__*/React.createElement("div", {
+    className: "fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-black/80 p-6",
+    onClick: () => setLightboxPhoto(null)
+  }, /*#__PURE__*/React.createElement("img", {
+    src: lightboxPhoto.url,
+    alt: "",
+    className: "max-w-full max-h-[65vh] rounded-xl",
+    onClick: e => e.stopPropagation()
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-3",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: () => handleDelete(lightboxPhoto),
+    className: "tap-active px-5 py-2.5 rounded-xl text-white font-bold text-sm",
+    style: {
+      background: cssVar("--danger")
+    }
+  }, "삭제"), /*#__PURE__*/React.createElement("button", {
+    onClick: () => setLightboxPhoto(null),
+    className: "tap-active px-5 py-2.5 rounded-xl text-white font-bold text-sm bg-white/15"
+  }, "닫기"))));
+}
+
 /* ---------------- 농장 상세 모달 ---------------- */
 
 function FarmDetailModal({
   farm,
   onClose,
   onEdit,
-  onDelete
+  onDelete,
+  onAddPhoto,
+  onDeletePhoto
 }) {
   const l = LIVESTOCK[farm.livestock];
   const handleDelete = () => {
@@ -1247,7 +1360,11 @@ function FarmDetailModal({
     size: 16
   })))), /*#__PURE__*/React.createElement("div", {
     className: "p-5 space-y-5"
-  }, /*#__PURE__*/React.createElement("section", {
+  }, /*#__PURE__*/React.createElement(PhotoSection, {
+    farm: farm,
+    onAddPhoto: onAddPhoto,
+    onDeletePhoto: onDeletePhoto
+  }), /*#__PURE__*/React.createElement("section", {
     className: "grid grid-cols-2 gap-3"
   }, /*#__PURE__*/React.createElement("div", {
     className: "rounded-xl p-3.5",
@@ -1814,6 +1931,11 @@ function App({
     }, () => setFarmsReady(true));
     return unsub;
   }, [farmsColRef]);
+
+  // 상세 모달이 열려 있는 동안에도(사진 추가/삭제 등) 최신 농장 데이터를 반영
+  useEffect(() => {
+    setSelectedFarm(sel => sel ? farms.find(f => f.id === sel.id) || null : sel);
+  }, [farms]);
   useEffect(() => {
     const unsub = userDocRef.onSnapshot(doc => {
       const data = doc.data() || {};
@@ -1889,6 +2011,24 @@ function App({
   const handleDelete = id => {
     farmsColRef.doc(id).delete();
     setSelectedFarm(null);
+  };
+  const handleAddPhoto = async (farmId, file) => {
+    const {
+      url,
+      path
+    } = await uploadFarmPhoto(user.uid, farmId, file);
+    await farmsColRef.doc(farmId).update({
+      photos: window.firebase.firestore.FieldValue.arrayUnion({
+        url,
+        path
+      })
+    });
+  };
+  const handleDeletePhoto = async (farmId, photo) => {
+    await farmsColRef.doc(farmId).update({
+      photos: window.firebase.firestore.FieldValue.arrayRemove(photo)
+    }).catch(() => {});
+    deleteFarmPhoto(photo.path).catch(() => {});
   };
   const handleSaveProfile = p => {
     userDocRef.set(p, {
@@ -2006,7 +2146,9 @@ function App({
         farm
       });
     },
-    onDelete: handleDelete
+    onDelete: handleDelete,
+    onAddPhoto: file => handleAddPhoto(selectedFarm.id, file),
+    onDeletePhoto: photo => handleDeletePhoto(selectedFarm.id, photo)
   }), formState && /*#__PURE__*/React.createElement(FarmFormModal, {
     initialFarm: formState.mode === "edit" ? formState.farm : null,
     clientId: clientId,
