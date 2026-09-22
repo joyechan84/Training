@@ -1,0 +1,38 @@
+{
+  "expo": {
+    "name": "WorshipBand AI",
+    "slug": "worshipband-ai",
+    "scheme": "worshipbandai",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": ["**/*"],
+    "splash": {
+      "backgroundColor": "#2E3440",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.worshipbandai.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "인도자의 멘트를 듣고 반주를 자동으로 제어하기 위해 마이크가 필요합니다.",
+        "NSSpeechRecognitionUsageDescription": "인도자의 멘트를 텍스트로 변환해 트리거 키워드를 인식하기 위해 음성 인식 권한이 필요합니다.",
+        "UIBackgroundModes": ["audio"]
+      }
+    },
+    "android": {
+      "package": "com.worshipbandai.app",
+      "permissions": ["RECORD_AUDIO", "MODIFY_AUDIO_SETTINGS"]
+    },
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "인도자의 멘트를 듣고 반주를 자동으로 제어하기 위해 마이크가 필요합니다.",
+          "speechRecognitionPermission": "인도자의 멘트를 텍스트로 변환하기 위해 음성 인식 권한이 필요합니다.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
+    ]
+  }
+}

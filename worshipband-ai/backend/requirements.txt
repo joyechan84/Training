@@ -1,0 +1,26 @@
+# WorshipBand AI 학습 파이프라인 백엔드 (설계 초안 / 레퍼런스 구현)
+#
+# 이 requirements.txt 로 설치되는 패키지들(특히 demucs, torch)은 용량이 크고
+# GPU 가 있어야 실사용 속도가 나온다. 이 저장소가 개발된 샌드박스 환경에는
+# 인터넷/GPU 가 없어 실제로 pip install 및 모델 다운로드/추론을 돌려보지
+# 못했다 — 코드 구조와 알고리즘 설계는 정확하지만, 로컬에서 직접 설치 후
+# 검증이 필요하다.
+
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+pydantic==2.7.1
+
+# 유튜브 오디오 추출
+yt-dlp==2024.8.6
+
+# 소스(스템) 분리 — htdemucs_6s 모델은 drums/bass/other/vocals/guitar/piano
+# 6개 스템을 직접 출력해서, 이 앱의 InstrumentId(drums/bass/guitar/piano)와
+# 자연스럽게 맞아떨어진다. "synth"는 남는 other 스템을 그대로 사용한다.
+demucs==4.0.1
+torch>=2.1
+torchaudio>=2.1
+
+# 비트/구간(구조) 분석
+librosa==0.10.2
+numpy>=1.24
+scipy>=1.11
