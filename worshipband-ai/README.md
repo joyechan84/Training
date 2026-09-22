@@ -36,7 +36,8 @@ worshipband-ai/
 │   │   ├── demoSong.ts            # loop 모드 데모 곡
 │   │   └── mockLearnedSong.ts     # timeline 모드 데모 곡 (기타 솔로 seek 시연용)
 │   ├── hooks/
-│   │   └── useVoiceIntentEngine.ts # 마이크 권한 + 실시간 STT + 키워드 인식 훅
+│   │   ├── useVoiceIntentEngine.ts     # 마이크 권한 + 실시간 STT + 키워드 인식 훅 (네이티브)
+│   │   └── useVoiceIntentEngine.web.ts # 웹 빌드용 대체 구현 (2장 하단 참고)
 │   ├── audio/
 │   │   ├── AudioEngine.ts         # 5트랙 동시 재생 + loop/timeline 두 모드 지원 엔진
 │   │   └── useAudioEngine.ts      # AudioEngine 을 React 생명주기에 연결하는 훅
@@ -64,6 +65,7 @@ worshipband-ai/
 | 실시간 STT (온디바이스, Apple Speech / Android SpeechRecognizer) | `expo-speech-recognition` |
 | 상태 관리(선택) | `zustand` |
 | 언어 | TypeScript |
+| 브라우저 테스트(선택) | `react-dom`, `react-native-web`, `@expo/metro-runtime` — `expo start --web` 용 |
 
 설치:
 
@@ -78,6 +80,30 @@ npx expo run:ios   # 또는 run:android
 `expo-speech-recognition`은 네이티브 권한/모듈을 포함하므로 **Expo Go 앱에서는 동작하지 않는다.**
 `expo-dev-client`로 커스텀 개발 빌드를 만들어야 마이크 STT 기능을 테스트할 수 있다.
 (오디오 재생 자체만 테스트하려면 Expo Go 에서도 `expo-av` 부분은 동작한다.)
+
+### 브라우저에서 빠르게 확인하기 (자동 진행 로직 검증용)
+
+기기/시뮬레이터 없이도 오디오 엔진과 자동 진행(3-2) 로직을 바로 확인할 수 있도록
+`react-dom` / `react-native-web` / `@expo/metro-runtime` 을 추가해뒀다:
+
+```bash
+npx expo start --web
+```
+
+이 방법으로 **실제 이 저장소 코드를 그대로 실행**해서 자동 진행 동작을 검증했다:
+콘티 등록 → mock 학습 완료 → "처음부터" 한 번 클릭 후 **추가 조작 없이** 4초/10초/16초/20초
+지점에서 절/후렴/기타 솔로/엔딩으로 자동 전환되고, 악기별 믹스(%)도 각 구간에서 학습된
+값과 정확히 일치하는 걸 확인했다.
+
+이 과정에서 실제 버그도 하나 발견해서 고쳤다: `expo-speech-recognition`의 웹 빌드는
+`NativeModule`/`registerWebModule`/`useEventListener`처럼 이 프로젝트가 고정한 Expo
+SDK(~51)에는 없는 API를 요구해서, 그대로 두면 `expo start --web` 실행 시 앱이 렌더링
+시점에 크래시한다 (업스트림 패키지와 SDK 버전 간의 실제 호환성 문제). 이 앱의 음성 인식은
+애초에 iOS/Android 온디바이스 STT 전용으로 설계되어 있으므로, `src/hooks/useVoiceIntentEngine.web.ts`
+를 추가해 웹 빌드에서는 (Metro/webpack의 `.web.ts` 플랫폼 확장자 해석 규칙에 따라) 이
+파일이 자동으로 대신 쓰이도록 했다 — "음성 인식은 아직 웹에서 지원되지 않습니다"라는
+안내만 주고 기능은 꺼진다. 네이티브(iOS/Android) 쪽 `useVoiceIntentEngine.ts` 구현은
+그대로다.
 
 ## 3. 핵심 로직 요약
 

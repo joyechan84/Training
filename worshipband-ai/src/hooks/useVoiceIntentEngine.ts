@@ -42,6 +42,14 @@ function intentKey(intent: VoiceIntent): string {
  *
  * expo-speech-recognition 은 온디바이스/OS 제공 STT(Apple Speech, Android SpeechRecognizer)를
  * 사용하므로 Expo Go 에서는 동작하지 않고, expo-dev-client 빌드가 필요하다.
+ *
+ * 이건 네이티브(iOS/Android) 구현이다. 웹 빌드(`expo start --web`)는 대신
+ * useVoiceIntentEngine.web.ts 가 쓰인다 — expo-speech-recognition 의 웹
+ * 레이어가 이 프로젝트가 고정한 Expo SDK(~51)에는 없는 `NativeModule`/
+ * `registerWebModule`/`useEventListener` export 를 요구해서 그대로 쓰면
+ * 앱이 렌더링 시점에 크래시하기 때문이다 (실제로 `expo start --web` 로
+ * 재현·확인함). Metro/webpack 의 플랫폼별 확장자 해석 규칙 덕분에, 웹
+ * 번들에는 이 파일이 아예 포함되지 않고 .web.ts 쪽만 쓰인다.
  */
 export function useVoiceIntentEngine({
   onIntent,
