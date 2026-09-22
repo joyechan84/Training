@@ -34,13 +34,12 @@ jobs:
         # expo-dev-client (and its expo-dev-launcher/expo-dev-menu deps) is
         # dev-only tooling: during `expo prebuild` it rewrites the generated
         # MainApplication/MainActivity to boot into a "connect to a Metro dev
-        # server" launcher instead of the app itself. A release APK built with
-        # it still present installed fine on a real phone but crashed on
-        # launch. Standalone/preview builds shouldn't include it at all (this
-        # mirrors how EAS itself only includes it in "development" build
-        # profiles, never "preview"/"production"). --no-save keeps this local
-        # to the CI runner's checkout; package.json/lockfile in the repo are
-        # untouched, so `expo start --dev-client` still works for local dev.
+        # server" launcher instead of the app itself. Standalone/preview
+        # builds shouldn't include it at all (this mirrors how EAS itself
+        # only includes it in "development" build profiles, never
+        # "preview"/"production"). --no-save keeps this local to the CI
+        # runner's checkout; package.json/lockfile in the repo are untouched,
+        # so `expo start --dev-client` still works for local dev.
         run: npm uninstall expo-dev-client --no-save
 
       - name: Expo prebuild (generate native android/ project)
@@ -68,14 +67,52 @@ jobs:
           path: worshipband-ai/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
 
-      # Standard GitHub-hosted runners don't have KVM/hardware acceleration,
-      # so a full emulator boot (tried in an earlier run) just hung instead of
-      # giving a crash log. This is a cheap static sanity check instead: dump
-      # the built APK's manifest/badging so obviously broken entries (missing
-      # launcher activity, bad package name, etc.) show up in the job log
-      # without needing to actually run it anywhere.
       - name: Dump APK badging (static sanity check)
         run: |
           BUILD_TOOLS=$(ls "$ANDROID_HOME"/build-tools | sort -V | tail -1)
           "$ANDROID_HOME/build-tools/$BUILD_TOOLS/aapt2" dump badging \
             android/app/build/outputs/apk/release/app-release.apk
+
+  emulator-crash-check:
+    # Standard ubuntu-latest runners have no KVM/hardware acceleration, so a
+    # full emulator boot there (tried once) just hung instead of giving a
+    # crash log. macos-latest runners have hardware-accelerated virtualization
+    # (Apple Hypervisor framework) and can boot an arm64 Android emulator —
+    # matching a real arm64 phone (e.g. Galaxy S23) much more closely than an
+    # x86_64 image would — in a couple of minutes.
+    needs: build-apk
+    runs-on: macos-latest
+    steps:
+      - name: Download built APK
+        uses: actions/download-artifact@v4
+        with:
+          name: worshipband-ai-release-apk
+          path: apk
+
+      - name: Boot emulator, install + launch APK, capture crash logcat
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: arm64-v8a
+          force-avd-creation: false
+          emulator-options: -no-window -no-audio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: |
+            adb logcat -c
+            adb install -r apk/app-release.apk
+            adb shell monkey -p com.worshipbandai.app -c android.intent.category.LAUNCHER 1
+            sleep 10
+            echo "----- resumed activity -----"
+            adb shell dumpsys activity activities | grep -A5 mResumedActivity || true
+            adb logcat -d > /tmp/full-logcat.txt
+            echo "----- FATAL/AndroidRuntime/worshipbandai/ReactNativeJS lines -----"
+            grep -E "FATAL EXCEPTION|AndroidRuntime|worshipbandai|ReactNativeJS" /tmp/full-logcat.txt | tail -300 || echo "(no matching lines found)"
+
+      - name: Upload full logcat
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-logcat
+          path: /tmp/full-logcat.txt
+          retention-days: 14
