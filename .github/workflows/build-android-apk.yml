@@ -36,15 +36,21 @@ jobs:
           EXPO_NO_TELEMETRY: "1"
         run: npx expo prebuild -p android --no-install
 
-      - name: Build debug APK
+      - name: Build release APK
+        # A debug build (assembleDebug) doesn't embed the JS bundle — it expects
+        # a Metro dev server to connect to at runtime, which is why opening it
+        # shows the "Development servers" launcher screen instead of the app.
+        # assembleRelease bundles the JS into the APK (signed with the default
+        # debug keystore, since no custom release signing is configured here)
+        # so it launches standalone on the tablet with no dev server needed.
         working-directory: worshipband-ai/android
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: worshipband-ai-debug-apk
-          path: worshipband-ai/android/app/build/outputs/apk/debug/app-debug.apk
+          name: worshipband-ai-release-apk
+          path: worshipband-ai/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 14
