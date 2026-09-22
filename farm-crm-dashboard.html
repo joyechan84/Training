@@ -204,7 +204,6 @@ const STATUS = {
     tint: "--danger-tint"
   }
 };
-const MONTH_TAG_LABELS = ["전전월", "전월", "이번달"];
 const STORAGE_KEYS = {
   firebaseConfig: "farmCrm.firebaseConfig.v1",
   naverOverride: "farmCrm.naverClientIdOverride.v1"
@@ -610,12 +609,12 @@ function FarmCard({
     className: "opacity-50"
   })));
 }
-function OrderChart({
-  orders
+function ProductChart({
+  products
 }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
-  const hasData = orders.some(v => v > 0);
+  const hasData = products.length > 0;
   useEffect(() => {
     if (!hasData || !canvasRef.current) return;
     if (typeof Chart === "undefined") return;
@@ -627,10 +626,10 @@ function OrderChart({
     chartRef.current = new Chart(canvasRef.current, {
       type: "bar",
       data: {
-        labels: MONTH_TAG_LABELS,
+        labels: products.map(p => p.name),
         datasets: [{
-          label: "주문량 (톤)",
-          data: orders,
+          label: "판매량 (톤)",
+          data: products.map(p => p.quantity),
           backgroundColor: brand,
           borderRadius: 8,
           maxBarThickness: 44
@@ -665,7 +664,7 @@ function OrderChart({
             ticks: {
               color: ink,
               font: {
-                size: 12,
+                size: 11,
                 weight: "600",
                 family: "'Noto Sans KR', sans-serif"
               }
@@ -677,14 +676,14 @@ function OrderChart({
     return () => {
       if (chartRef.current) chartRef.current.destroy();
     };
-  }, [orders, hasData]);
+  }, [products, hasData]);
   if (!hasData) {
     return /*#__PURE__*/React.createElement("p", {
       className: "text-xs py-8 text-center",
       style: {
         color: cssVar("--ink-faint")
       }
-    }, "최근 주문 데이터가 없습니다.");
+    }, "등록된 제품 판매 정보가 없습니다.");
   }
   return /*#__PURE__*/React.createElement("div", {
     className: "h-40 mt-2"
@@ -844,8 +843,7 @@ function emptyFarmDraft() {
     owner: "",
     phone: "",
     address: "",
-    product: "",
-    orders: [0, 0, 0],
+    products: [],
     lastVisitDate: "",
     nextVisitDate: "",
     note: ""
@@ -854,6 +852,7 @@ function emptyFarmDraft() {
 function FarmFormModal({
   initialFarm,
   clientId,
+  productCatalog,
   onCancel,
   onSubmit
 }) {
@@ -868,12 +867,36 @@ function FarmFormModal({
     ...d,
     [key]: value
   }));
-  const setOrder = (idx, value) => setDraft(d => {
-    const orders = [...d.orders];
-    orders[idx] = Number(value) || 0;
+  const addProductRow = () => setDraft(d => ({
+    ...d,
+    products: [...d.products, {
+      productId: "",
+      name: "",
+      quantity: 0
+    }]
+  }));
+  const removeProductRow = idx => setDraft(d => ({
+    ...d,
+    products: d.products.filter((_, i) => i !== idx)
+  }));
+  const updateProductRow = (idx, field, value) => setDraft(d => {
+    const products = [...d.products];
+    if (field === "productId") {
+      const cat = productCatalog.find(c => c.id === value);
+      products[idx] = {
+        ...products[idx],
+        productId: value,
+        name: cat ? cat.name : ""
+      };
+    } else {
+      products[idx] = {
+        ...products[idx],
+        quantity: Number(value) || 0
+      };
+    }
     return {
       ...d,
-      orders
+      products
     };
   });
   const handleSubmit = async e => {
@@ -900,6 +923,7 @@ function FarmFormModal({
     }
     const farm = {
       ...draft,
+      products: draft.products.filter(p => p.productId),
       id: isEdit ? initialFarm.id : Date.now() + "-" + Math.random().toString(36).slice(2, 7),
       lat,
       lng
@@ -996,29 +1020,52 @@ function FarmFormModal({
     }
   }, "저장하면 자동으로 지도 좌표를 찾아 지도 탭에 표시돼요.")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "field-label"
-  }, "현재 사용 사료 제품"), /*#__PURE__*/React.createElement("input", {
-    className: "field",
-    value: draft.product,
-    onChange: e => setField("product", e.target.value),
-    placeholder: "예: 한우비육사료 A+"
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
-    className: "field-label"
-  }, "최근 3개월 주문량 (톤)"), /*#__PURE__*/React.createElement("div", {
-    className: "grid grid-cols-3 gap-2"
-  }, MONTH_TAG_LABELS.map((label, idx) => /*#__PURE__*/React.createElement("div", {
-    key: label
-  }, /*#__PURE__*/React.createElement("input", {
+  }, "제품별 판매 현황"), draft.products.map((p, idx) => /*#__PURE__*/React.createElement("div", {
+    key: idx,
+    className: "flex gap-2 mb-2"
+  }, /*#__PURE__*/React.createElement("select", {
+    className: "field flex-1",
+    value: p.productId,
+    onChange: e => updateProductRow(idx, "productId", e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "제품 선택"), productCatalog.map(cat => /*#__PURE__*/React.createElement("option", {
+    key: cat.id,
+    value: cat.id
+  }, cat.name))), /*#__PURE__*/React.createElement("input", {
     type: "number",
     min: "0",
-    className: "field text-center font-mono",
-    value: draft.orders[idx],
-    onChange: e => setOrder(idx, e.target.value)
-  }), /*#__PURE__*/React.createElement("p", {
-    className: "text-[10px] text-center mt-1",
+    className: "field w-20 text-center font-mono",
+    value: p.quantity,
+    onChange: e => updateProductRow(idx, "quantity", e.target.value),
+    placeholder: "톤"
+  }), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => removeProductRow(idx),
+    className: "tap-active w-10 shrink-0 rounded-xl flex items-center justify-center",
     style: {
-      color: cssVar("--ink-faint")
+      background: cssVar("--danger-tint"),
+      color: cssVar("--danger")
     }
-  }, label))))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement(CloseIcon, {
+    size: 14
+  })))), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: addProductRow,
+    disabled: productCatalog.length === 0,
+    className: "tap-active w-full py-2.5 rounded-xl text-xs font-bold border flex items-center justify-center gap-1 disabled:opacity-50",
+    style: {
+      borderColor: cssVar("--brand"),
+      color: cssVar("--brand")
+    }
+  }, /*#__PURE__*/React.createElement(PlusIcon, {
+    size: 13
+  }), " 제품 추가"), productCatalog.length === 0 && /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] mt-1.5",
+    style: {
+      color: cssVar("--warn")
+    }
+  }, "등록된 제품 카테고리가 없어요. 설정 → 사료 제품 카테고리에서 먼저 추가해 주세요.")), /*#__PURE__*/React.createElement("div", {
     className: "grid grid-cols-2 gap-3"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("label", {
     className: "field-label"
@@ -1173,28 +1220,36 @@ function FarmDetailModal({
     style: {
       color: cssVar("--warn")
     }
-  }, "지도 좌표 없음 — 지도 탭에는 표시되지 않아요.")), /*#__PURE__*/React.createElement("section", {
-    className: "rounded-xl p-3.5",
-    style: {
-      background: cssVar("--surface-2")
-    }
-  }, /*#__PURE__*/React.createElement("p", {
-    className: "text-[11px] font-semibold tracking-wide",
-    style: {
-      color: cssVar("--ink-faint")
-    }
-  }, "현재 사용 사료 제품"), /*#__PURE__*/React.createElement("p", {
-    className: "text-sm font-bold mt-1"
-  }, farm.product || "미입력")), /*#__PURE__*/React.createElement("section", null, /*#__PURE__*/React.createElement("p", {
+  }, "지도 좌표 없음 — 지도 탭에는 표시되지 않아요.")), /*#__PURE__*/React.createElement("section", null, /*#__PURE__*/React.createElement("p", {
     className: "text-sm font-bold mb-1.5"
-  }, "최근 3개월 주문량 추이"), /*#__PURE__*/React.createElement("div", {
+  }, "제품별 판매 현황"), /*#__PURE__*/React.createElement("div", {
     className: "rounded-xl p-3 border",
     style: {
       borderColor: cssVar("--border")
     }
-  }, /*#__PURE__*/React.createElement(OrderChart, {
-    orders: farm.orders
-  }))), /*#__PURE__*/React.createElement("section", null, /*#__PURE__*/React.createElement("p", {
+  }, /*#__PURE__*/React.createElement(ProductChart, {
+    products: farm.products || []
+  })), (farm.products || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "mt-2 space-y-1.5"
+  }, farm.products.map((p, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "flex items-center justify-between text-xs rounded-lg px-3 py-2",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "font-semibold"
+  }, p.name), /*#__PURE__*/React.createElement("span", {
+    className: "font-mono",
+    style: {
+      color: cssVar("--ink-soft")
+    }
+  }, p.quantity, "톤")))), !(farm.products && farm.products.length) && farm.product && /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px] mt-1.5",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "이전에 등록된 제품: ", farm.product)), /*#__PURE__*/React.createElement("section", null, /*#__PURE__*/React.createElement("p", {
     className: "text-sm font-bold mb-1.5"
   }, "특이사항 메모"), /*#__PURE__*/React.createElement("p", {
     className: "text-sm rounded-xl p-3.5 whitespace-pre-wrap",
@@ -1226,19 +1281,29 @@ function FarmDetailModal({
 function SettingsModal({
   profile,
   userEmail,
+  productCatalog,
   onClose,
   onSaveProfile,
   onResetAll,
-  onLogout
+  onLogout,
+  onAddProduct,
+  onDeleteProduct
 }) {
   const [name, setName] = useState(profile.name);
   const [region, setRegion] = useState(profile.region);
   const [targetRate, setTargetRate] = useState(profile.targetRate);
+  const [newProductName, setNewProductName] = useState("");
   const handleSaveProfile = () => onSaveProfile({
     name,
     region,
     targetRate: Number(targetRate) || 0
   });
+  const handleAddProduct = () => {
+    const name = newProductName.trim();
+    if (!name) return;
+    onAddProduct(name);
+    setNewProductName("");
+  };
   return /*#__PURE__*/React.createElement("div", {
     className: "fixed inset-0 z-50 flex items-end justify-center modal-backdrop"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1331,6 +1396,55 @@ function SettingsModal({
       background: cssVar("--brand")
     }
   }, "담당자 정보 저장")), /*#__PURE__*/React.createElement("section", {
+    className: "space-y-3 pt-2 border-t",
+    style: {
+      borderColor: cssVar("--border")
+    }
+  }, /*#__PURE__*/React.createElement("h3", {
+    className: "text-sm font-bold"
+  }, "사료 제품 카테고리"), /*#__PURE__*/React.createElement("p", {
+    className: "text-[11px]",
+    style: {
+      color: cssVar("--ink-faint")
+    }
+  }, "여기서 등록한 제품이 농장 등록 화면의 선택 목록에 나타나요."), /*#__PURE__*/React.createElement("div", {
+    className: "flex gap-2"
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "field flex-1",
+    value: newProductName,
+    onChange: e => setNewProductName(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleAddProduct();
+      }
+    },
+    placeholder: "예: 한우비육사료 A+"
+  }), /*#__PURE__*/React.createElement("button", {
+    onClick: handleAddProduct,
+    className: "tap-active px-4 rounded-xl text-white font-bold text-sm",
+    style: {
+      background: cssVar("--brand")
+    }
+  }, "추가")), productCatalog.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "space-y-1.5"
+  }, productCatalog.map(p => /*#__PURE__*/React.createElement("div", {
+    key: p.id,
+    className: "flex items-center justify-between rounded-lg px-3 py-2 text-sm",
+    style: {
+      background: cssVar("--surface-2")
+    }
+  }, /*#__PURE__*/React.createElement("span", null, p.name), /*#__PURE__*/React.createElement("button", {
+    onClick: () => {
+      if (window.confirm(`"${p.name}" 카테고리를 삭제할까요? 이미 등록된 농장의 데이터는 유지됩니다.`)) onDeleteProduct(p.id);
+    },
+    className: "tap-active w-7 h-7 rounded-full flex items-center justify-center",
+    style: {
+      color: cssVar("--danger")
+    }
+  }, /*#__PURE__*/React.createElement(CloseIcon, {
+    size: 13
+  })))))), /*#__PURE__*/React.createElement("section", {
     className: "space-y-2 pt-2 border-t",
     style: {
       borderColor: cssVar("--border")
@@ -1587,8 +1701,10 @@ function App({
 }) {
   const userDocRef = useMemo(() => db.collection("users").doc(user.uid), [db, user.uid]);
   const farmsColRef = useMemo(() => userDocRef.collection("farms"), [userDocRef]);
+  const productsColRef = useMemo(() => userDocRef.collection("products"), [userDocRef]);
   const [farms, setFarms] = useState([]);
   const [farmsReady, setFarmsReady] = useState(false);
+  const [productCatalog, setProductCatalog] = useState([]);
   const [profile, setProfile] = useState({
     name: "",
     region: "",
@@ -1622,6 +1738,15 @@ function App({
     });
     return unsub;
   }, [userDocRef]);
+  useEffect(() => {
+    const unsub = productsColRef.onSnapshot(snap => {
+      setProductCatalog(snap.docs.map(d => ({
+        id: d.id,
+        ...d.data()
+      })));
+    });
+    return unsub;
+  }, [productsColRef]);
   useEffect(() => {
     if (clientId) ensureNaverMaps(clientId).catch(() => {});
   }, [clientId]);
@@ -1668,6 +1793,14 @@ function App({
     setShowSettings(false);
   };
   const handleLogout = () => window.firebase.auth().signOut();
+  const handleAddProduct = name => {
+    productsColRef.doc(Date.now() + "-" + Math.random().toString(36).slice(2, 7)).set({
+      name
+    });
+  };
+  const handleDeleteProduct = id => {
+    productsColRef.doc(id).delete();
+  };
   if (!farmsReady) return /*#__PURE__*/React.createElement(LoadingScreen, {
     text: "데이터를 불러오는 중..."
   });
@@ -1763,15 +1896,19 @@ function App({
   }), formState && /*#__PURE__*/React.createElement(FarmFormModal, {
     initialFarm: formState.mode === "edit" ? formState.farm : null,
     clientId: clientId,
+    productCatalog: productCatalog,
     onCancel: () => setFormState(null),
     onSubmit: formState.mode === "edit" ? handleEditSubmit : handleCreateSubmit
   }), showSettings && /*#__PURE__*/React.createElement(SettingsModal, {
     profile: profile,
     userEmail: user.email,
+    productCatalog: productCatalog,
     onClose: () => setShowSettings(false),
     onSaveProfile: handleSaveProfile,
     onResetAll: handleResetAll,
-    onLogout: handleLogout
+    onLogout: handleLogout,
+    onAddProduct: handleAddProduct,
+    onDeleteProduct: handleDeleteProduct
   }));
 }
 
