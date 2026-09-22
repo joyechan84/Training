@@ -96,7 +96,11 @@ jobs:
           target: google_apis
           arch: arm64-v8a
           force-avd-creation: false
-          emulator-options: -no-window -no-audio -no-boot-anim -camera-back none
+          # Kept to just -no-window this time — the previous run's emulator
+          # never came up at all (adb never saw the device even once before
+          # timing out), which points at one of the extra flags
+          # (-no-audio/-camera-back) failing to parse rather than a slow boot.
+          emulator-options: -no-window
           disable-animations: true
           script: |
             adb logcat -c
