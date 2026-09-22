@@ -115,11 +115,7 @@ def _run_pipeline(song_id: str, youtube_url: str, title: str) -> None:
 
         source_wav = extract_audio(youtube_url, work_dir / "raw")
         stems = separate_stems(source_wav, work_dir / "stems")
-        structure = detect_structure(
-            mixed_wav=source_wav,
-            guitar_wav=stems["guitar"],
-            vocals_wav=stems["vocals"],
-        )
+        structure = detect_structure(mixed_wav=source_wav, stems=stems)
 
         public_dir = STORAGE_DIR / song_id
         public_dir.mkdir(parents=True, exist_ok=True)

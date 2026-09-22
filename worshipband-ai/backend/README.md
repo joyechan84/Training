@@ -57,6 +57,13 @@ interface SetlistSong {
   errorMessage?: string;     // FAILED 일 때만
   requestedAt: string;       // ISO timestamp
 }
+
+interface TimelineCue {
+  section: "INTRO" | "VERSE" | "CHORUS" | "BRIDGE" | "SOLO" | "QUIET" | "ENDING" | "STOP";
+  atMs: number;
+  // 있으면 일반 SECTION_MIX 프리셋 대신 이 값을 쓴다 (3-2 참고).
+  mix?: { drums: number; bass: number; guitar: number; piano: number; synth: number };
+}
 ```
 
 `songConfig.tracks` 의 각 값은 `"${API_BASE}/static/{songId}/{stem}.wav"`
@@ -97,23 +104,44 @@ R&D가 필요하다. 대신 이 설계는 **원곡에 실제로 있는 기타 �
 
 1. `detect_sections.py` 가 vocals 스템 에너지가 낮고(보컬이 거의 없고)
    guitar 스템 에너지가 평균보다 높은 구간을 `SOLO` 로 라벨링한다.
-2. 앱의 `AudioEngine.goToSection("SOLO")` 는 (timeline 모드에서) 5개 트랙을
-   모두 그 구간의 시작 시각으로 동시에 seek 하고, `guitar` 트랙 볼륨을
-   최대로 올린다.
-3. 결과적으로 인도자가 "솔로 가겠습니다"라고 말하면, 원곡에서 실제 기타가
-   솔로를 연주했던 바로 그 구간이 자연스럽게 이어진다.
+2. 같은 함수가 구간별로 drums/bass/guitar/piano/synth 각 스템의 RMS
+   에너지를 그 악기가 곡 전체에서 낸 최대치로 정규화해 **구간별
+   악기 mix(0~1)** 를 만든다 (`_compute_segment_mixes`). 즉 "이 곡은
+   이 솔로 구간에 드럼·베이스는 받쳐주고, 피아노·신디는 거의 없다"는
+   식으로, 장르 공통 프리셋이 아니라 **그 곡 고유의 편곡**을 학습한다.
+3. `build_song_config.py` 가 이 mix 를 `timeline[i].mix` 에 그대로 실어
+   `SongConfig` 에 포함시킨다.
+
+### 3-3. 인도자의 멘트 없이도 자동으로 따라가는 이유
+
+솔로 구간은 정의상 인도자가 마이크에 대고 아무 말도 하지 않는 순간이라,
+음성 트리거로는 애초에 잡을 수 없다. 그래서 이 mix 정보는 "인도자가
+말했을 때만" 쓰이는 게 아니라, **재생 중 자동으로** 적용된다:
+
+- 앱의 `AudioEngine` 은 timeline 모드 곡을 재생 시작(`playAll`)하거나
+  인도자가 수동으로 특정 구간으로 점프(`goToSection`)할 때마다, 그 시점
+  이후에 나오는 모든 학습된 큐를 원곡과 같은 상대 타이밍으로
+  `setTimeout` 예약해둔다(`scheduleAutoFollow`).
+- 각 큐가 도래하면 (있다면) `timeline[i].mix` 로, 없으면 일반
+  `SECTION_MIX` 프리셋으로 부드럽게 크로스페이드한다 — 버튼도, 음성도
+  필요 없다.
+- 인도자가 원곡과 다르게 진행하고 싶을 때(예: 후렴 한 번 더)는 언제든
+  버튼/음성으로 개입할 수 있고, 개입한 시점부터 다시 남은 타임라인이
+  자동으로 이어진다. MainScreen 의 "자동 진행" 스위치로 이 동작 자체를
+  완전히 끌 수도 있다.
 
 이 방식은 기술적으로 훨씬 현실적이고, 지금 아키텍처(스템 볼륨 제어)에
 자연스럽게 들어맞는다. 실시간 AI 즉흥 연주는 로드맵으로 남겨둔다
 (README 루트 문서의 "향후 개선" 참고).
 
-### 3-3. 구조 탐지 알고리즘 요약
+### 3-4. 구조/믹스 탐지 알고리즘 요약
 
 - **BPM**: `librosa.beat.beat_track`
 - **구간 경계**: 크로마 특징의 자기유사도 행렬에서 인접 윈도우 간 유사도
-  변화(novelty)가 큰 지점을 피크piking (Foote 2000 방식의 단순화 버전)
+  변화(novelty)가 큰 지점을 피크피킹 (Foote 2000 방식의 단순화 버전)
 - **라벨링(휴리스틱)**: 첫 구간=INTRO, 마지막 구간=ENDING, 가장 큰 구간=CHORUS,
   보컬 없고 기타가 두드러지는 구간=SOLO, 나머지는 등장 순서로 VERSE/BRIDGE
+- **구간별 악기 mix**: 위 3-2 참고 (`_compute_segment_mixes`)
 - **키(Key) 추정**: 현재 `build_song_config.py` 에 TODO로 남겨둠
   (크로마 프로파일 + Krumhansl-Schmuckler 알고리즘으로 확장 가능)
 

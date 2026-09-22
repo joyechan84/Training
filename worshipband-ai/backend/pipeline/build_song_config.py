@@ -40,7 +40,11 @@ def build_song_config(
         "sourceYoutubeUrl": source_youtube_url,
         "tracks": tracks,
         "timeline": [
-            {"section": cue.section, "atMs": cue.at_ms}
+            {
+                "section": cue.section,
+                "atMs": cue.at_ms,
+                **({"mix": cue.mix} if cue.mix is not None else {}),
+            }
             for cue in structure.timeline
         ],
     }

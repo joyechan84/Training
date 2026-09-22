@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
 } from "react-native";
@@ -29,6 +30,7 @@ export function MainScreen({ song = DEMO_SONG }: MainScreenProps) {
     goToSection,
     triggerFullBand,
     shiftKey,
+    setAutoFollow,
   } = useAudioEngine();
 
   const [isLoading, setIsLoading] = useState(true);
@@ -81,6 +83,21 @@ export function MainScreen({ song = DEMO_SONG }: MainScreenProps) {
       />
 
       <InstrumentIndicator mix={state.mix} />
+
+      {song.mode === "timeline" ? (
+        <View style={styles.autoFollowRow}>
+          <View style={styles.autoFollowText}>
+            <Text style={styles.autoFollowLabel}>자동 진행 (원곡 흐름 자동 추종)</Text>
+            <Text style={styles.autoFollowCaption}>
+              기타 솔로처럼 멘트가 없는 구간도 학습된 원곡 그대로 자동 전환됩니다.
+            </Text>
+          </View>
+          <Switch
+            value={state.autoFollowEnabled}
+            onValueChange={setAutoFollow}
+          />
+        </View>
+      ) : null}
 
       <BigActionButton
         label={isListening ? "🎙️ 듣는 중 (탭하여 정지)" : "🎙️ 음성 인식 시작"}
@@ -160,6 +177,29 @@ const styles = StyleSheet.create({
   },
   grid: {
     marginTop: 8,
+  },
+  autoFollowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#3B4252",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 14,
+  },
+  autoFollowText: {
+    flex: 1,
+    marginRight: 10,
+  },
+  autoFollowLabel: {
+    color: "#ECEFF4",
+    fontSize: 15,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  autoFollowCaption: {
+    color: "#D8DEE9",
+    fontSize: 12,
+    lineHeight: 16,
   },
   transcript: {
     color: "#D8DEE9",

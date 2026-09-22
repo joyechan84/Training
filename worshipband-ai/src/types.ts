@@ -26,6 +26,13 @@ export type SongMode = "loop" | "timeline";
 export interface TimelineCue {
   section: SectionId;
   atMs: number;
+  /**
+   * 이 지점에서 각 악기가 실제로 얼마나 연주되고 있는지(학습 파이프라인이
+   * 분리된 스템의 에너지를 분석해 산출한 값). 있으면 일반적인 SECTION_MIX
+   * 프리셋 대신 이 값을 쓴다 — "이 곡은 이 후렴에 기타가 없다"처럼 곡마다
+   * 실제 편곡이 다른 걸 반영하기 위함이다. 없으면 SECTION_MIX[section] 로 대체한다.
+   */
+  mix?: InstrumentMix;
 }
 
 export interface SongConfig {
@@ -77,4 +84,10 @@ export interface EngineState {
   mix: InstrumentMix;
   bpm: number;
   keyOffsetSemitones: number;
+  /**
+   * timeline 모드 곡에서, 학습된 타임라인을 따라 (인도자의 멘트 없이도)
+   * 자동으로 다음 구간 믹스로 넘어갈지 여부. 기타 솔로처럼 인도자가 말을
+   * 하지 않는 구간은 음성 트리거로 잡을 수 없기 때문에 기본값은 true.
+   */
+  autoFollowEnabled: boolean;
 }

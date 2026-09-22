@@ -11,6 +11,7 @@ interface UseAudioEngineResult {
   goToSection: (section: SectionId) => Promise<void>;
   triggerFullBand: () => Promise<void>;
   shiftKey: (deltaSemitones: number) => Promise<void>;
+  setAutoFollow: (enabled: boolean) => Promise<void>;
 }
 
 /** AudioEngine 인스턴스를 React 생명주기에 묶어주는 훅. */
@@ -45,6 +46,19 @@ export function useAudioEngine(): UseAudioEngineResult {
     (delta: number) => engine.shiftKey(delta),
     [engine]
   );
+  const setAutoFollow = useCallback(
+    (enabled: boolean) => engine.setAutoFollow(enabled),
+    [engine]
+  );
 
-  return { state, loadSong, playAll, stopAll, goToSection, triggerFullBand, shiftKey };
+  return {
+    state,
+    loadSong,
+    playAll,
+    stopAll,
+    goToSection,
+    triggerFullBand,
+    shiftKey,
+    setAutoFollow,
+  };
 }

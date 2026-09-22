@@ -35,6 +35,8 @@ export class AudioEngine {
   private sounds: Partial<Record<InstrumentId, Audio.Sound>> = {};
   private fadeTimer: ReturnType<typeof setInterval> | null = null;
   private sectionChangeTimer: ReturnType<typeof setTimeout> | null = null;
+  /** timeline 모드에서 "말 없이도" 학습된 구간마다 자동으로 믹스를 바꿔주는 예약 타이머들. */
+  private autoFollowTimers: ReturnType<typeof setTimeout>[] = [];
   private listeners = new Set<Listener>();
 
   private state: EngineState = {
@@ -44,6 +46,7 @@ export class AudioEngine {
     mix: SECTION_MIX.STOP,
     bpm: 0,
     keyOffsetSemitones: 0,
+    autoFollowEnabled: true,
   };
 
   subscribe(listener: Listener): () => void {
@@ -93,6 +96,7 @@ export class AudioEngine {
       keyOffsetSemitones: 0,
       currentSection: "STOP",
       mix: SECTION_MIX.STOP,
+      autoFollowEnabled: true,
     });
   }
 
@@ -111,6 +115,10 @@ export class AudioEngine {
       Object.values(this.sounds).map((s) => s?.playFromPositionAsync(0))
     );
     this.setState({ isPlaying: true });
+
+    if (this.song?.mode === "timeline") {
+      this.scheduleAutoFollow(0);
+    }
   }
 
   async stopAll(): Promise<void> {
@@ -123,18 +131,22 @@ export class AudioEngine {
     });
   }
 
+  /** 기준 트랙(드럼, 없으면 아무 트랙)의 현재 재생 위치(ms)를 읽는다. 조회 실패 시 0. */
+  private async getReferencePositionMs(): Promise<number> {
+    const reference = this.sounds.drums ?? Object.values(this.sounds)[0];
+    if (!reference) return 0;
+    const status: AVPlaybackStatus = await reference.getStatusAsync();
+    return status.isLoaded ? status.positionMillis : 0;
+  }
+
   /** 다음 마디 경계까지 남은 시간(ms)을 계산한다. 위치 조회 실패 시 0. */
   private async msUntilNextBar(): Promise<number> {
     if (!this.song) return 0;
-    const reference = this.sounds.drums ?? Object.values(this.sounds)[0];
-    if (!reference) return 0;
-
-    const status: AVPlaybackStatus = await reference.getStatusAsync();
-    if (!status.isLoaded) return 0;
+    const posMs = await this.getReferencePositionMs();
 
     const beatMs = 60000 / this.song.bpm;
     const barMs = beatMs * this.song.beatsPerBar;
-    const posInBar = status.positionMillis % barMs;
+    const posInBar = posMs % barMs;
     return barMs - posInBar;
   }
 
@@ -170,6 +182,10 @@ export class AudioEngine {
    * timeline 모드 전용: 원곡 학습 타임라인에서 해당 섹션의 시작 지점을 찾아
    * 모든 스템을 동시에 그 위치로 seek 한다. 해당 섹션이 이번 곡에서 감지되지 않았다면
    * (예: 원곡에 브릿지가 없는 경우) 조용히 무시한다.
+   *
+   * 인도자의 멘트/버튼으로 "점프"하는 경우에만 호출된다 (예: 후렴을 한 번 더).
+   * 점프 이후에는 그 지점부터 남은 타임라인을 다시 자동 예약(scheduleAutoFollow)해서,
+   * 이후 구간(예: 그 다음에 이어지는 기타 솔로)은 다시 멘트 없이 자동으로 따라간다.
    */
   private async goToTimelineSection(
     section: SectionId,
@@ -185,8 +201,53 @@ export class AudioEngine {
         s?.setStatusAsync({ positionMillis: cue.atMs, shouldPlay: true })
       )
     );
-    this.applyMix(SECTION_MIX[section], fadeMs);
+    this.applyMix(cue.mix ?? SECTION_MIX[section], fadeMs);
     this.setState({ currentSection: section });
+    this.scheduleAutoFollow(cue.atMs);
+  }
+
+  /**
+   * timeline 모드에서 "자동 추종" 켜짐/꺼짐을 전환한다.
+   * 기타 솔로처럼 인도자가 마이크에 대고 말하지 않는 구간은 애초에 음성으로
+   * 트리거할 방법이 없기 때문에, 학습된 곡은 기본적으로 이 자동 추종이 켜진
+   * 상태로 재생된다. 다만 인도자가 원곡과 다르게 진행하고 싶을 때(즉흥으로
+   * 후렴을 반복하는 등)를 위해 언제든 끄고 수동으로만 조작할 수 있게 한다.
+   */
+  async setAutoFollow(enabled: boolean): Promise<void> {
+    this.setState({ autoFollowEnabled: enabled });
+    if (!enabled) {
+      this.clearAutoFollowTimers();
+      return;
+    }
+    const posMs = await this.getReferencePositionMs();
+    this.scheduleAutoFollow(posMs);
+  }
+
+  /**
+   * fromMs 이후에 나오는 학습된 타임라인 큐들을, 원곡과 같은 상대 타이밍으로
+   * setTimeout 예약해둔다. 각 큐가 도래하면 (곡별로 학습된) 악기 믹스로
+   * 자동 전환되어 — 인도자의 어떤 말/버튼 조작 없이도 — 기타 솔로 같은
+   * 구간이 원곡 그대로 자연스럽게 이어진다.
+   */
+  private scheduleAutoFollow(fromMs: number) {
+    this.clearAutoFollowTimers();
+    const song = this.song;
+    if (!song || song.mode !== "timeline" || !this.state.autoFollowEnabled) {
+      return;
+    }
+
+    const upcoming = (song.timeline ?? []).filter((c) => c.atMs > fromMs);
+    this.autoFollowTimers = upcoming.map((cue) =>
+      setTimeout(() => {
+        this.applyMix(cue.mix ?? SECTION_MIX[cue.section], DEFAULT_FADE_MS);
+        this.setState({ currentSection: cue.section });
+      }, cue.atMs - fromMs)
+    );
+  }
+
+  private clearAutoFollowTimers() {
+    this.autoFollowTimers.forEach(clearTimeout);
+    this.autoFollowTimers = [];
   }
 
   /** 인도자가 "다같이 크게!" 라고 외칠 때 즉시 풀밴드(전 악기 최대)로 전환. 즉시성이 중요하므로 quantize 하지 않는다. */
@@ -243,5 +304,6 @@ export class AudioEngine {
     if (this.sectionChangeTimer) clearTimeout(this.sectionChangeTimer);
     this.fadeTimer = null;
     this.sectionChangeTimer = null;
+    this.clearAutoFollowTimers();
   }
 }

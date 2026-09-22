@@ -14,6 +14,14 @@ import { SongConfig } from "@/types";
  * 지점으로 동시에 seek 해서, 원곡의 그 기타 솔로가 시작되는 순간부터
  * 자연스럽게 이어받는다. BRIDGE 는 이 데모 곡에 없으므로 timeline 에
  * 없고, 그 상태로 goToSection("BRIDGE") 를 호출하면 조용히 무시된다.
+ *
+ * 각 큐의 mix 값은 SECTION_MIX 의 일반 프리셋이 아니라, "이 곡은 실제로
+ * 이 구간에서 이 악기가 이만큼 연주되고 있다"는 이 곡만의 학습 결과를
+ * 흉내 낸 값이다 (실제 파이프라인에서는 분리된 스템의 에너지를 측정해서
+ * 산출한다 — backend/pipeline/detect_sections.py 참고). 특히 인도자가
+ * 마이크에 대고 아무 말도 하지 않는 SOLO 구간은, MainScreen 의 "자동 진행"
+ * 토글이 켜져 있으면 AudioEngine 이 재생 중 자동으로 이 mix 로 전환한다 —
+ * 음성 트리거를 기다리지 않는다.
  */
 export const MOCK_LEARNED_SONG: SongConfig = {
   id: "learned-mock-01",
@@ -31,10 +39,33 @@ export const MOCK_LEARNED_SONG: SongConfig = {
     synth: require("../../assets/tracks/learned-demo/synth.wav"),
   },
   timeline: [
-    { section: "INTRO", atMs: 0 },
-    { section: "VERSE", atMs: 4000 },
-    { section: "CHORUS", atMs: 10000 },
-    { section: "SOLO", atMs: 16000 },
-    { section: "ENDING", atMs: 20000 },
+    {
+      section: "INTRO",
+      atMs: 0,
+      mix: { drums: 0.3, bass: 0.3, guitar: 0.15, piano: 0.7, synth: 0.5 },
+    },
+    {
+      section: "VERSE",
+      atMs: 4000,
+      mix: { drums: 0.5, bass: 0.6, guitar: 0.2, piano: 0.8, synth: 0.35 },
+    },
+    {
+      section: "CHORUS",
+      atMs: 10000,
+      mix: { drums: 1.0, bass: 1.0, guitar: 0.3, piano: 0.9, synth: 0.9 },
+    },
+    // 기타 솔로: 보컬(원곡)이 없고 기타가 두드러지는 구간 — 학습 파이프라인이
+    // 실제로 찾아낸 지점을 그대로 재현한다. 드럼/베이스는 받쳐주는 수준으로 남기고
+    // 피아노/신디는 공간을 비워준다.
+    {
+      section: "SOLO",
+      atMs: 16000,
+      mix: { drums: 0.6, bass: 0.65, guitar: 1.0, piano: 0.2, synth: 0.25 },
+    },
+    {
+      section: "ENDING",
+      atMs: 20000,
+      mix: { drums: 0.25, bass: 0.25, guitar: 0.1, piano: 0.6, synth: 0.4 },
+    },
   ],
 };
