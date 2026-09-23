@@ -175,7 +175,7 @@ button{font:inherit;color:inherit}
    ================================================================ */
 const T = 16, N = 21, W = N * T, H = N * T, CX = W / 2, CY = H / 2;
 const DRAW_COST = 50;
-const FARM_R = 42, MAX_WAVE = 30, START_MONEY = 200, START_LIVES = 20;
+const FARM_R = 42, MAX_WAVE = 30, START_MONEY = 300, START_LIVES = 20;
 
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
@@ -309,7 +309,7 @@ const TDEF = {
   rocket:   { name: '로켓', cls: 2, range: 124, rate: 2.7, dmg: 55, aoe: 34, desc: '느리지만 멀리까지 날아가는 유도 로켓. 넓은 범위를 한 번에 날려버린다.' },
   rifle:    { name: '소총', cls: 2, range: 148, rate: 1.4, dmg: 50, desc: '사거리 안에서 체력이 가장 많은 적 하나만 골라 저격한다.' },
   tranq:    { name: '마취총', cls: 3, range: 92, rate: 1.8, dmg: 3, stun: 1.4, desc: '마취 다트로 아직 깨어 있는 적을 잠시 잠재운다. 보스에게는 효과가 절반.' },
-  bait:     { name: '미끼책', cls: 3, lureR: 38, lureDur: 2.2, cap: 3, desc: '날고기 미끼로 주변 적을 길 밖으로 꾀어내 잠시 붙잡아 둔다. 직접 공격하지 않으니 화력 옆에 두자.' },
+  bait:     { name: '미끼책', cls: 3, rate: 0.25, dmg: 2.5, lureR: 38, lureDur: 2.2, cap: 3, desc: '독을 바른 날고기로 주변 적을 길 밖으로 꾀어내 붙잡아 둔다. 미끼를 뜯는 동안 독 피해를 입고, 화력 옆에 두면 더 효과적.' },
 };
 const TORDER = ['shotgun', 'chainsaw', 'grenade', 'flame', 'rocket', 'rifle', 'tranq', 'bait'];
 const CLS = [['근', '#b86a3a'], ['중', '#c9a23a'], ['원', '#6f9a3a'], ['특', '#4aa6b0']];
@@ -646,7 +646,15 @@ function updateTurret(t, dt) {
     return;
   }
   t.cd -= dt; t.recoil = Math.max(0, t.recoil - dt * 20); t.fire = Math.max(0, t.fire - dt); t.active = Math.max(0, t.active - dt);
-  if (t.type === 'bait') return;
+  if (t.type === 'bait') {
+    if (t.cd > 0) return;
+    t.cd = s.rate;
+    for (const e of G.enemies) if (!e.dead && e.bait === t && e.state === 'lured' && dist2(e.x, e.y, t.x, t.y) < 100) {
+      hurt(e, s.dmg);
+      if (Math.random() < 0.6) part(e.x + rand(-2, 2), e.y - rand(3, 6), rand(-6, 6), rand(-18, -8), rand(0.3, 0.5), Math.random() < 0.5 ? '#a3c93a' : '#6a8a20', 1);
+    }
+    return;
+  }
   const es = inRange(t, s.range);
   if (!es.length) return;
   switch (t.type) {
@@ -1037,7 +1045,7 @@ const fmt = v => v >= 100 ? Math.round(v) : v >= 10 ? v.toFixed(1).replace(/\.0$
 function statRows(type, lv, cmp) {
   const s = stats(type, lv), c = cmp ? stats(type, lv + 1) : null, rows = [];
   const add = (label, key, f = fmt, suffix = '') => rows.push(`<dt>${label}</dt><dd>${f(s[key])}${suffix}${c ? ` <span style="color:var(--toxic)">→ ${f(c[key])}</span>` : ''}</dd>`);
-  if (type === 'bait') { add('유인 반경', 'lureR'); add('붙잡는 시간', 'lureDur', fmt, 's'); add('동시 유인', 'cap', v => v, '마리'); return rows.join(''); }
+  if (type === 'bait') { rows.push(`<dt>독 초당 피해</dt><dd>${fmt(s.dmg / s.rate)}${c ? ` <span style="color:var(--toxic)">→ ${fmt(c.dmg / c.rate)}</span>` : ''}</dd>`); add('유인 반경', 'lureR'); add('붙잡는 시간', 'lureDur', fmt, 's'); add('동시 유인', 'cap', v => v, '마리'); return rows.join(''); }
   if (type === 'chainsaw' || type === 'flame') rows.push(`<dt>초당 피해</dt><dd>${fmt(s.dmg / s.rate)}${c ? ` <span style="color:var(--toxic)">→ ${fmt(c.dmg / c.rate)}</span>` : ''}</dd>`);
   else if (type === 'shotgun') add('피해', 'dmg', v => fmt(v) + '×' + s.pellets);
   else add('피해', 'dmg');
