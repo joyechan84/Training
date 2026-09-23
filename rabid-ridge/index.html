@@ -66,11 +66,21 @@ button{font:inherit;color:inherit}
 .tbtn{position:relative;background:var(--panel2);border:2px solid var(--line);padding:6px 2px 5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:0 3px 0 #000}
 .tbtn img{width:40px;height:40px;image-rendering:pixelated}
 .tbtn .nm{font-size:14px;line-height:1}
-.tbtn .cs{font-family:var(--px);font-size:8px;color:var(--gold)}
+.tbtn .cs{font-size:12px;line-height:1;color:var(--faint)}
 .tbtn .rg{position:absolute;top:2px;left:3px;font-size:11px;color:var(--faint)}
 .tbtn.sel{border-color:var(--toxic);background:#2f3320}
 .tbtn.poor{opacity:.45}
 .tbtn:active{transform:translateY(2px);box-shadow:0 1px 0 #000}
+.draw{display:flex;align-items:center;gap:12px;background:#3a2a16;border:2px solid var(--gold);padding:10px 12px;cursor:pointer;box-shadow:0 4px 0 #000;text-align:left;width:100%}
+.draw img{width:44px;height:44px;image-rendering:pixelated;flex:none}
+.draw .t1{display:block;font-size:20px;line-height:1.1}
+.draw .t2{display:block;font-size:13px;color:var(--dim);margin-top:2px}
+.draw .pr{margin-left:auto;font-family:var(--px);font-size:12px;color:var(--gold);display:flex;align-items:center;gap:6px}
+.draw.sel{border-color:var(--toxic);background:#2f3320}
+.draw:disabled{opacity:.45;cursor:default}
+.draw:active:not(:disabled){transform:translateY(2px);box-shadow:0 2px 0 #000}
+.draw:focus-visible{outline:2px solid var(--toxic);outline-offset:2px}
+.tbtn.look{border-color:var(--bone)}
 .info h3{margin:0;font-size:22px;font-weight:normal;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .info .tag{font-size:13px;color:var(--ink);background:var(--dim);padding:2px 6px}
 .info .desc{margin:0;color:var(--dim);line-height:1.5;font-size:15px}
@@ -120,7 +130,7 @@ button{font:inherit;color:inherit}
         <h1>RABID RIDGE<small>광견 능선 목장</small></h1>
         <p>문명이 무너진 지 11년. 광견병 변종에 감염된 <b>늑대·들개·여우·라쿤·너구리</b>가 밤마다 산비탈을 타고 오른다. 산꼭대기 평지에 남은 마지막 목장, 그리고 가축 20마리. 고철로 포탑을 세워 사방에서 올라오는 무리를 막아라.</p>
         <ul>
-          <li>아래 포탑을 고르고 산비탈 빈 칸을 눌러 설치</li>
+          <li><b style="color:var(--gold);font-weight:normal">타워 뽑기권</b>(고철 50)을 쓰고 산비탈 빈 칸을 누르면 8종 중 무작위 포탑이 설치된다</li>
           <li><b style="color:var(--toxic);font-weight:normal">같은 종류·같은 레벨</b> 포탑을 끌어다 겹치면 합체 → 레벨 업 (최대 Lv5)</li>
           <li>30번째 습격까지 가축을 지키면 승리</li>
         </ul>
@@ -141,7 +151,9 @@ button{font:inherit;color:inherit}
 
   <aside class="side">
     <section class="panel">
-      <h2>포탑 <span>BUILD</span></h2>
+      <h2>타워 뽑기 <span>RANDOM</span></h2>
+      <button class="draw" id="btnDraw"><img id="icoCrate" alt=""><span><span class="t1">타워 뽑기권</span><span class="t2">빈 칸을 누르면 8종 중 하나가 무작위로 설치</span></span><span class="pr"><i class="coin"></i><span id="drawCost">50</span></span></button>
+      <h2>포탑 도감 <span>8 TYPES · 각 12.5%</span></h2>
       <div class="shop" id="shop"></div>
       <div class="legend"><span><i style="background:#b86a3a"></i>근거리</span><span><i style="background:#c9a23a"></i>중거리</span><span><i style="background:#6f9a3a"></i>원거리</span><span><i style="background:#4aa6b0"></i>특수</span></div>
     </section>
@@ -162,7 +174,8 @@ button{font:inherit;color:inherit}
    nearest-neighbour so every sprite stays on the pixel grid.
    ================================================================ */
 const T = 16, N = 21, W = N * T, H = N * T, CX = W / 2, CY = H / 2;
-const FARM_R = 42, MAX_WAVE = 30, START_MONEY = 170, START_LIVES = 20;
+const DRAW_COST = 50;
+const FARM_R = 42, MAX_WAVE = 30, START_MONEY = 200, START_LIVES = 20;
 
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
@@ -252,6 +265,7 @@ const SP = {
   car: spr(['....rrrrrr....', '...rgGGGgrr...', '.rrrrrrrrrrrrr', 'rrRrrrrrrRrrrr', 'rrrrRrrrrrrRrr', '.kk.......kk..'], { r: '#8a4a2a', R: '#5e2f18', g: '#34403f', G: '#4f5f5c', k: '#1a1a1a' }),
   barrel: spr(['.yyy.', 'ykkky', 'yyyyy', 'ykgky', 'yyyyy', '.yyy.'], { y: '#8a7a2a', k: '#3a3418', g: '#a3c93a' }),
   skull: spr(['.www.', 'wkwkw', 'wwwww', '.w.w.'], { w: '#d8ceb4', k: '#1a1410' }),
+  crate: spr(['wwwwwwwwww', 'wWWWyyyWWw', 'wWWyWWWyWw', 'wWWWWWWyWw', 'wWWWWyyWWw', 'wWWWWyWWWw', 'wWWWWWWWWw', 'wWWWWyWWWw', 'wwwwwwwwww'], { w: '#5a3a20', W: '#8a643a', y: '#e0c040' }),
   meat: spr(['....ww..', '..rRRrw.', '.rRrrRRr', 'rRRrrrRR', '.rrRRrr.'], { r: '#b8322a', R: '#8a1f1a', w: '#e6dcc4' }),
 };
 
@@ -288,14 +302,14 @@ const BAIT_BASE = spr(['..wwwwwwww..', '.wWWWWWWWWw.', 'wWwwwwwwwwWw', 'wWwwwwww
 
 /* ---------- turret definitions ---------- */
 const TDEF = {
-  shotgun:  { name: '샷건', cost: 40, cls: 0, range: 42, rate: 1.0, dmg: 7, pellets: 5, kb: 12, desc: '근거리 산탄 5발을 부채꼴로 쏴 맞은 적을 산 아래로 밀쳐낸다.' },
-  chainsaw: { name: '체인소', cost: 45, cls: 0, range: 25, rate: 0.12, dmg: 4.2, desc: '바로 옆을 지나는 모든 적을 계속 갈아버리고 발을 묶는다. 사거리는 가장 짧지만 초당 피해는 최강.' },
-  grenade:  { name: '수류탄', cost: 60, cls: 1, range: 74, rate: 1.7, dmg: 24, aoe: 22, desc: '포물선으로 던져 떨어진 자리 주변을 폭발로 휩쓴다.' },
-  flame:    { name: '화염방사', cost: 65, cls: 1, range: 48, rate: 0.1, dmg: 1.2, burn: 9, burnDur: 3, desc: '불길에 닿은 적에게 몇 초간 지속되는 화상(도트) 피해를 남긴다.' },
-  rocket:   { name: '로켓', cost: 110, cls: 2, range: 124, rate: 2.7, dmg: 55, aoe: 34, desc: '느리지만 멀리까지 날아가는 유도 로켓. 넓은 범위를 한 번에 날려버린다.' },
-  rifle:    { name: '소총', cost: 90, cls: 2, range: 148, rate: 1.4, dmg: 50, desc: '사거리 안에서 체력이 가장 많은 적 하나만 골라 저격한다.' },
-  tranq:    { name: '마취총', cost: 70, cls: 3, range: 92, rate: 1.8, dmg: 3, stun: 1.4, desc: '마취 다트로 아직 깨어 있는 적을 잠시 잠재운다. 보스에게는 효과가 절반.' },
-  bait:     { name: '미끼책', cost: 50, cls: 3, lureR: 38, lureDur: 2.2, cap: 3, desc: '날고기 미끼로 주변 적을 길 밖으로 꾀어내 잠시 붙잡아 둔다. 직접 공격하지 않으니 화력 옆에 두자.' },
+  shotgun:  { name: '샷건', cls: 0, range: 42, rate: 1.0, dmg: 7, pellets: 5, kb: 12, desc: '근거리 산탄 5발을 부채꼴로 쏴 맞은 적을 산 아래로 밀쳐낸다.' },
+  chainsaw: { name: '체인소', cls: 0, range: 25, rate: 0.12, dmg: 4.2, desc: '바로 옆을 지나는 모든 적을 계속 갈아버리고 발을 묶는다. 사거리는 가장 짧지만 초당 피해는 최강.' },
+  grenade:  { name: '수류탄', cls: 1, range: 74, rate: 1.7, dmg: 24, aoe: 22, desc: '포물선으로 던져 떨어진 자리 주변을 폭발로 휩쓴다.' },
+  flame:    { name: '화염방사', cls: 1, range: 48, rate: 0.1, dmg: 1.2, burn: 9, burnDur: 3, desc: '불길에 닿은 적에게 몇 초간 지속되는 화상(도트) 피해를 남긴다.' },
+  rocket:   { name: '로켓', cls: 2, range: 124, rate: 2.7, dmg: 55, aoe: 34, desc: '느리지만 멀리까지 날아가는 유도 로켓. 넓은 범위를 한 번에 날려버린다.' },
+  rifle:    { name: '소총', cls: 2, range: 148, rate: 1.4, dmg: 50, desc: '사거리 안에서 체력이 가장 많은 적 하나만 골라 저격한다.' },
+  tranq:    { name: '마취총', cls: 3, range: 92, rate: 1.8, dmg: 3, stun: 1.4, desc: '마취 다트로 아직 깨어 있는 적을 잠시 잠재운다. 보스에게는 효과가 절반.' },
+  bait:     { name: '미끼책', cls: 3, lureR: 38, lureDur: 2.2, cap: 3, desc: '날고기 미끼로 주변 적을 길 밖으로 꾀어내 잠시 붙잡아 둔다. 직접 공격하지 않으니 화력 옆에 두자.' },
 };
 const TORDER = ['shotgun', 'chainsaw', 'grenade', 'flame', 'rocket', 'rifle', 'tranq', 'bait'];
 const CLS = [['근', '#b86a3a'], ['중', '#c9a23a'], ['원', '#6f9a3a'], ['특', '#4aa6b0']];
@@ -490,7 +504,7 @@ function newGame(data) {
   G = {
     money: START_MONEY, lives: START_LIVES, wave: 1, state: 'build', endless: false,
     enemies: [], turrets: [], proj: [], parts: [], tracers: [], texts: [], spawnQ: [], spawnT: 0,
-    speed: 1, paused: false, sel: null, place: null, hover: null, drag: null, time: 0, shake: 0, flash: 0, kills: 0, over: false,
+    speed: 1, paused: false, sel: null, place: false, look: null, hover: null, drag: null, time: 0, shake: 0, flash: 0, kills: 0, over: false,
     animals: [],
   };
   if (data && data.turrets) {
@@ -512,12 +526,12 @@ function farmSpot() {
 function newAnimal(kind) { const p = farmSpot(), q = farmSpot(); return { kind, x: p.x, y: p.y, tx: q.x, ty: q.y, wait: rand(3), face: 1, t: rand(10) }; }
 
 function addTurret(type, tx, ty, lv = 1, inv) {
-  const t = { id: UID++, type, tx, ty, x: tx * T + 8, y: ty * T + 8, lv, inv: inv ?? TDEF[type].cost, cd: rand(0.3), ang: -Math.PI / 2, recoil: 0, fire: 0, active: 0, st: stats(type, lv) };
+  const t = { id: UID++, type, tx, ty, x: tx * T + 8, y: ty * T + 8, lv, inv: inv ?? DRAW_COST, unbox: 0, cd: rand(0.3), ang: -Math.PI / 2, recoil: 0, fire: 0, active: 0, st: stats(type, lv) };
   G.turrets.push(t);
   return t;
 }
 const canBuild = (tx, ty) => inGrid(tx, ty) && grid[ty * N + tx] === 0 && !turretAt(tx, ty);
-function partnerOf(t) { return t.lv < 5 && G.turrets.filter(o => o !== t && o.type === t.type && o.lv === t.lv).sort((a, b) => dist2(a.x, a.y, t.x, t.y) - dist2(b.x, b.y, t.x, t.y))[0]; }
+function partnerOf(t) { return t.lv < 5 && G.turrets.filter(o => o !== t && o.unbox <= 0 && o.type === t.type && o.lv === t.lv).sort((a, b) => dist2(a.x, a.y, t.x, t.y) - dist2(b.x, b.y, t.x, t.y))[0]; }
 function merge(src, dst) {
   if (!src || !dst || src === dst || src.type !== dst.type || src.lv !== dst.lv || dst.lv >= 5) return false;
   G.turrets.splice(G.turrets.indexOf(src), 1);
@@ -623,6 +637,14 @@ function aim(t, e) { t.ang = Math.atan2(e.y - (t.y - 2), e.x - t.x); }
 
 function updateTurret(t, dt) {
   const s = t.st;
+  if (t.unbox > 0) {
+    t.unbox -= dt;
+    if (t.unbox <= 0) {
+      burst(t.x, t.y - 2, 22, ['#e0c040', '#fff2b0', '#8a643a', LVCOL[0]], 55, 0.55);
+      banner(TDEF[t.type].name + ' 등장!', false); sfx('merge'); refreshUI();
+    }
+    return;
+  }
   t.cd -= dt; t.recoil = Math.max(0, t.recoil - dt * 20); t.fire = Math.max(0, t.fire - dt); t.active = Math.max(0, t.active - dt);
   if (t.type === 'bait') return;
   const es = inRange(t, s.range);
@@ -887,6 +909,7 @@ function render() {
   const heads = [];
   for (const t of G.turrets) {
     if (G.drag && G.drag.t === t && G.drag.moved) continue;
+    if (t.unbox > 0) { const j = ((G.time * 30) | 0) % 2 ? 1 : -1; ctx.drawImage(SP.crate, Math.round(t.x - 6 + (t.unbox < 0.3 ? j : 0)), Math.round(t.y - 8)); continue; }
     if (t.type === 'bait') { drawTurretAt('bait', t.lv, t.x, t.y, 0); continue; }
     heads.push(t);
   }
@@ -954,11 +977,9 @@ function render() {
     if (pt) { ctx.strokeStyle = LVCOL[t.lv]; ctx.strokeRect(pt.tx * T + 0.5, pt.ty * T + 0.5, T - 1, T - 1); }
   }
   if (G.place && G.hover && !G.drag) {
-    const { tx, ty } = G.hover, ok = canBuild(tx, ty) && G.money >= TDEF[G.place].cost;
-    const x = tx * T + 8, y = ty * T + 8, st = stats(G.place, 1);
-    ctx.globalAlpha = 0.65; drawTurretAt(G.place, 1, x, y, -Math.PI / 4); ctx.globalAlpha = 1;
+    const { tx, ty } = G.hover, ok = canBuild(tx, ty) && G.money >= DRAW_COST;
+    ctx.globalAlpha = 0.7; ctx.drawImage(SP.crate, tx * T + 2, ty * T + 1); ctx.globalAlpha = 1;
     ctx.strokeStyle = ok ? '#a3c93a' : '#e04a2a'; ctx.strokeRect(tx * T + 0.5, ty * T + 0.5, T - 1, T - 1);
-    if (ok) drawRangeDots(x, y, G.place === 'bait' ? st.lureR : st.range, '#eadcc0');
   }
   if (G.drag && G.drag.moved) {
     const d = G.drag, t = d.t, tx = Math.floor(d.x / T), ty = Math.floor(d.y / T);
@@ -996,14 +1017,19 @@ function makeIcon(type) {
 const EICON = {}; function enemyIcon(k) { return EICON[k] || (EICON[k] = ESPRITES[k].a.toDataURL()); }
 const ICONS = {}; TORDER.forEach(k => ICONS[k] = makeIcon(k));
 $('icoLives').src = SP.cow.toDataURL();
+$('icoCrate').src = SP.crate.toDataURL();
+$('drawCost').textContent = DRAW_COST;
+function toggleDraw() { initAudio(); G.place = !G.place && G.money >= DRAW_COST; G.sel = null; G.look = null; refreshUI(); }
+$('btnDraw').onclick = toggleDraw;
 
 function buildShop() {
   const shop = $('shop'); shop.innerHTML = '';
   for (const k of TORDER) {
     const d = TDEF[k], b = document.createElement('button');
     b.className = 'tbtn'; b.id = 'shop-' + k; b.dataset.k = k;
-    b.innerHTML = `<span class="rg" style="color:${CLS[d.cls][1]}">${CLS[d.cls][0]}</span><img alt="" src="${ICONS[k]}"><span class="nm">${d.name}</span><span class="cs">${d.cost}</span>`;
-    b.addEventListener('click', () => { initAudio(); G.place = G.place === k ? null : k; G.sel = null; refreshUI(); });
+    b.innerHTML = `<span class="rg" style="color:${CLS[d.cls][1]}">${CLS[d.cls][0]}</span><img alt="" src="${ICONS[k]}"><span class="nm">${d.name}</span><span class="cs">${G.turrets.filter(t => t.type === k && t.unbox <= 0).length || '-'}</span>`;
+    b.title = d.name + ' 설명 보기';
+    b.addEventListener('click', () => { G.look = G.look === k ? null : k; G.sel = null; G.place = false; refreshUI(); });
     shop.appendChild(b);
   }
 }
@@ -1040,15 +1066,20 @@ function renderInfo() {
     const bm = $('btnMerge'); if (bm) bm.onclick = () => { const p = partnerOf(t); if (p) merge(p, t); };
     $('btnSell').onclick = () => sell(t);
   } else if (G.place) {
-    const d = TDEF[G.place];
-    info.innerHTML = `<h2>설치 <span>${d.cost} SCRAP</span></h2>
-      <h3><img src="${ICONS[G.place]}" alt="" style="width:32px;image-rendering:pixelated">${d.name} <span class="tag" style="background:${CLS[d.cls][1]}">${['근거리', '중거리', '원거리', '특수'][d.cls]}</span></h3>
-      <p class="desc">${d.desc}</p><dl class="kv">${statRows(G.place, 1)}</dl>
-      <p class="hint">산비탈의 빈 칸을 눌러 설치. 한 번 더 누르면 취소.</p>`;
+    info.innerHTML = `<h2>뽑기 중 <span>${DRAW_COST} SCRAP</span></h2>
+      <h3><img src="${SP.crate.toDataURL()}" alt="" style="width:32px;image-rendering:pixelated">무엇이 나올까</h3>
+      <p class="desc">산비탈의 빈 칸을 누르면 고철 ${DRAW_COST}을 내고 보급 상자를 떨어뜨린다. 상자에서는 8종 포탑 중 하나가 같은 확률로 나온다.</p>
+      <p class="hint">고철이 남아 있으면 계속 뽑을 수 있다. 뽑기권 버튼을 다시 누르거나 Esc로 그만두기. 원하는 포탑이 안 나오면 <b>같은 종류끼리 합체</b>시키거나 판매(${Math.floor(DRAW_COST * 0.6)} 환급)하자.</p>`;
+  } else if (G.look) {
+    const d = TDEF[G.look], have = G.turrets.filter(t => t.type === G.look);
+    info.innerHTML = `<h2>포탑 도감 <span>12.5%</span></h2>
+      <h3><img src="${ICONS[G.look]}" alt="" style="width:32px;image-rendering:pixelated">${d.name} <span class="tag" style="background:${CLS[d.cls][1]}">${['근거리', '중거리', '원거리', '특수'][d.cls]}</span></h3>
+      <p class="desc">${d.desc}</p><dl class="kv">${statRows(G.look, 1)}</dl>
+      <p class="hint">보유 ${have.length}개${have.length ? ' (' + [1, 2, 3, 4, 5].map(l => [l, have.filter(t => t.lv === l).length]).filter(a => a[1]).map(a => 'LV' + a[0] + '×' + a[1]).join(', ') + ')' : ''} · 뽑기로만 얻을 수 있다.</p>`;
   } else {
     info.innerHTML = `<h2>목장 일지 <span>HOW TO</span></h2>
       <p class="desc">무리는 산의 <b style="color:var(--bone);font-weight:normal">동서남북 네 갈래 산길</b>을 지그재그로 타고 올라와 울타리에 닿는 순간 가축을 물어간다.</p>
-      <p class="hint">포탑을 골라 빈 칸에 설치 · 포탑을 눌러 정보 보기 · <b>같은 종류·같은 레벨</b> 포탑끼리 끌어다 겹치면 한 단계 위로 합체 (LV5까지). 5번째 습격마다 변종 알파 늑대가 나타난다.</p>`;
+      <p class="hint">타워 뽑기권으로 빈 칸에 무작위 포탑 설치 · 포탑을 눌러 정보 보기 · <b>같은 종류·같은 레벨</b> 포탑끼리 끌어다 겹치면 한 단계 위로 합체 (LV5까지). 5번째 습격마다 변종 알파 늑대가 나타난다.</p>`;
   }
 }
 function renderNext() {
@@ -1063,8 +1094,9 @@ function refreshUI() {
   $('waveMax').textContent = G.endless ? '/∞' : '/' + MAX_WAVE;
   $('stLives').classList.toggle('hurt', G.lives <= 6);
   const bw = $('btnWave'); bw.disabled = G.state !== 'build' || G.over; bw.textContent = G.state === 'wave' ? '습격 중…' : '습격 시작';
-  for (const k of TORDER) { const b = $('shop-' + k); b.classList.toggle('sel', G.place === k); b.classList.toggle('poor', G.money < TDEF[k].cost); }
-  const key = [G.sel && G.sel.id, G.sel && G.sel.lv, G.place, G.state, G.wave, G.turrets.length, G.sel ? G.money >= 0 : 0].join('|');
+  const dr = $('btnDraw'); dr.classList.toggle('sel', !!G.place); dr.disabled = G.money < DRAW_COST && !G.place;
+  for (const k of TORDER) { const b = $('shop-' + k); b.classList.toggle('look', G.look === k); b.querySelector('.cs').textContent = G.turrets.filter(t => t.type === k && t.unbox <= 0).length ? '보유 ' + G.turrets.filter(t => t.type === k && t.unbox <= 0).length : '-'; }
+  const key = [G.sel && G.sel.id, G.sel && G.sel.lv, G.place, G.look, G.state, G.wave, G.turrets.length].join('|');
   if (key !== lastUI || G.sel) { renderInfo(); lastUI = key; }
   renderNext();
 }
@@ -1088,22 +1120,24 @@ cv.addEventListener('pointerdown', ev => {
   initAudio();
   const p = toWorld(ev), tx = Math.floor(p.x / T), ty = Math.floor(p.y / T);
   const t = turretAt(tx, ty);
+  if (t && t.unbox > 0) return;
   if (t) {
     G.drag = { t, x: p.x, y: p.y, sx: p.x, sy: p.y, moved: false };
     cv.setPointerCapture(ev.pointerId);
     return;
   }
   if (G.place) {
-    const cost = TDEF[G.place].cost;
+    const cost = DRAW_COST;
     if (canBuild(tx, ty) && G.money >= cost) {
-      G.money -= cost; const nt = addTurret(G.place, tx, ty);
+      G.money -= cost; const nt = addTurret(TORDER[(Math.random() * TORDER.length) | 0], tx, ty);
+      nt.unbox = 0.55;
       burst(nt.x, nt.y + 4, 8, ['#8b7a55', '#6a5c40'], 20, 0.35); sfx('place');
-      if (G.money < cost) G.place = null;
+      if (G.money < cost) G.place = false;
       refreshUI();
-    } else if (!inGrid(tx, ty) || grid[ty * N + tx] !== 0) { G.place = null; refreshUI(); }
+    } else if (!inGrid(tx, ty) || grid[ty * N + tx] !== 0) { G.place = false; refreshUI(); }
     return;
   }
-  G.sel = null; refreshUI();
+  G.sel = null; G.look = null; refreshUI();
 });
 cv.addEventListener('pointermove', ev => {
   const p = toWorld(ev);
@@ -1114,18 +1148,19 @@ cv.addEventListener('pointerleave', () => { if (!G.drag) G.hover = null; });
 function endDrag(ev) {
   const d = G.drag; if (!d) return;
   G.drag = null;
-  if (!d.moved) { G.sel = G.sel === d.t ? null : d.t; G.place = null; refreshUI(); return; }
+  if (!d.moved) { G.sel = G.sel === d.t ? null : d.t; G.place = false; G.look = null; refreshUI(); return; }
   const tx = Math.floor(d.x / T), ty = Math.floor(d.y / T), tgt = turretAt(tx, ty);
-  if (tgt && tgt !== d.t) { if (!merge(d.t, tgt)) banner('같은 종류·레벨끼리만 합체', true); }
+  if (tgt && tgt !== d.t && tgt.unbox > 0) { }
+  else if (tgt && tgt !== d.t) { if (!merge(d.t, tgt)) banner('같은 종류·레벨끼리만 합체', true); }
   else if (!tgt && G.state === 'build' && canBuild(tx, ty)) { d.t.tx = tx; d.t.ty = ty; d.t.x = tx * T + 8; d.t.y = ty * T + 8; G.sel = d.t; sfx('place'); refreshUI(); }
   else if (!tgt && canBuild(tx, ty)) banner('이동은 습격 사이에만', true);
 }
 cv.addEventListener('pointerup', endDrag);
 cv.addEventListener('pointercancel', () => { G.drag = null; });
 window.addEventListener('keydown', ev => {
-  if (ev.key === 'Escape') { G.place = null; G.sel = null; refreshUI(); }
+  if (ev.key === 'Escape') { G.place = false; G.sel = null; G.look = null; refreshUI(); }
   if (ev.key === ' ' && !introOpen && ev.target === document.body) { ev.preventDefault(); if (G.state === 'build') startWave(); else togglePause(); }
-  const n = parseInt(ev.key, 10); if (n >= 1 && n <= 8 && !introOpen) { G.place = G.place === TORDER[n - 1] ? null : TORDER[n - 1]; G.sel = null; refreshUI(); }
+  if ((ev.key === 'd' || ev.key === 'D') && !introOpen) toggleDraw();
 });
 function togglePause() { G.paused = !G.paused; $('btnPause').textContent = G.paused ? '재개' : '정지'; $('btnPause').classList.toggle('on', G.paused); }
 $('btnWave').onclick = () => { initAudio(); startWave(); };
