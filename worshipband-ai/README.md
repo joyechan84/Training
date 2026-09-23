@@ -24,7 +24,7 @@ worshipband-ai/
 ├── tsconfig.json
 ├── assets/
 │   └── tracks/
-│       ├── drums.wav / bass.wav / guitar.wav / piano.wav / synth.wav
+│       ├── drums.mp3 / bass.mp3 / guitar.mp3 / piano.mp3 / synth.mp3
 │       │                                 # loop 모드 데모 곡의 2초 루프 placeholder
 │       └── learned-demo/                # timeline 모드 데모 곡 (24초, 16~20초 구간에
 │                                         # 실제 "기타 솔로" 프레이즈 포함 — mock 학습 결과용)
@@ -185,8 +185,13 @@ drums/bass/other/vocals/guitar/piano) → 구조·기타 솔로 구간 탐지(li
    실제 서비스에서는 전용 pitch-shift DSP(네이티브 모듈 또는 서버 사이드 전처리로 곡별 키 프리셋 제공)가 필요하다.
 3. **STT 정확도**: 시골 교회의 마이크 환경(하울링, 잡음, 사투리)에서 키워드 인식률이 떨어질 수 있어
    트리거 문구는 반드시 현장 테스트 후 `src/constants/triggers.ts`를 보강해야 한다.
-4. **데모 트랙**: `assets/tracks/*.wav`, `assets/tracks/learned-demo/*.wav` 는 실제 찬양
+4. **데모 트랙**: `assets/tracks/*.mp3`, `assets/tracks/learned-demo/*.mp3` 는 실제 찬양
    스템이 아니라 배선 확인용 placeholder다. 실제 서비스 곡은 진짜 5-스템 오디오로 교체해야 한다.
+   (mp3 를 쓰는 이유는 순수 음질보다 호환성 때문이다 — 초기엔 wav 로 만들었는데, 배포한
+   웹 빌드에서 `MEDIA_ELEMENT_ERROR: Format error` 로 재생 자체가 실패하는 걸 실기기에서
+   확인했다. 헤더는 정상인 파일이었는데도 실패했던 걸 보면 아티팩트 CDN이 무압축 WAV를
+   다루는 과정에서 문제가 생기는 것으로 보이며, 웹에서 훨씬 안전하게 재생되는 mp3로 바꿔서
+   해결했다.)
 5. **백엔드 미검증**: 4장에서 언급한 대로 학습 파이프라인은 실제로 돌려보지 못한 설계 초안이다.
 6. **자동 진행은 시각 기반 타이머**: `scheduleAutoFollow`는 학습된 절대 시각(ms)을 기준으로
    `setTimeout`을 예약하는 방식이라, 실제 재생 위치와 시스템 타이머 사이에 아주 약간의

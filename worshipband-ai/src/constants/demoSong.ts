@@ -21,10 +21,10 @@ export const DEMO_SONG: SongConfig = {
   baseKey: "A",
   mode: "loop",
   tracks: {
-    drums: require("../../assets/tracks/drums.wav"),
-    bass: require("../../assets/tracks/bass.wav"),
-    guitar: require("../../assets/tracks/guitar.wav"),
-    piano: require("../../assets/tracks/piano.wav"),
-    synth: require("../../assets/tracks/synth.wav"),
+    drums: require("../../assets/tracks/drums.mp3"),
+    bass: require("../../assets/tracks/bass.mp3"),
+    guitar: require("../../assets/tracks/guitar.mp3"),
+    piano: require("../../assets/tracks/piano.mp3"),
+    synth: require("../../assets/tracks/synth.mp3"),
   },
 };

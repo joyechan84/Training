@@ -32,11 +32,11 @@ export const MOCK_LEARNED_SONG: SongConfig = {
   mode: "timeline",
   sourceYoutubeUrl: "https://www.youtube.com/watch?v=EXAMPLE",
   tracks: {
-    drums: require("../../assets/tracks/learned-demo/drums.wav"),
-    bass: require("../../assets/tracks/learned-demo/bass.wav"),
-    guitar: require("../../assets/tracks/learned-demo/guitar.wav"),
-    piano: require("../../assets/tracks/learned-demo/piano.wav"),
-    synth: require("../../assets/tracks/learned-demo/synth.wav"),
+    drums: require("../../assets/tracks/learned-demo/drums.mp3"),
+    bass: require("../../assets/tracks/learned-demo/bass.mp3"),
+    guitar: require("../../assets/tracks/learned-demo/guitar.mp3"),
+    piano: require("../../assets/tracks/learned-demo/piano.mp3"),
+    synth: require("../../assets/tracks/learned-demo/synth.mp3"),
   },
   timeline: [
     {
