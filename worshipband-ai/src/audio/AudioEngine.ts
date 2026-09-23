@@ -109,12 +109,34 @@ export class AudioEngine {
     this.setState({ isLoaded: false, isPlaying: false });
   }
 
-  /** 전 트랙을 볼륨 0으로 동시에 시작시킨다 (인트로에서 goToSection 으로 페이드인). */
+  /**
+   * 전 트랙을 재생 시작한다. 이후 goToSection 이 목표 믹스로 페이드인하는데,
+   * "볼륨 0으로 재생 시작 → 한참 뒤 setInterval 로 볼륨을 처음 올림" 순서로
+   * 하면 웹 브라우저에서 그 첫 볼륨 변경이 완전히 무음 처리되는 걸 실제로
+   * 확인했다 (사용자 탭과 무관한 타이머가 "처음으로 음소거를 해제"하는 걸
+   * 자동재생 정책이 막는 것으로 보임 — 브라우저 Web Audio API로 만든 별도
+   * 테스트 톤은 정상적으로 들렸으므로, 이 페이지에서 오디오 자체가 막힌 게
+   * 아니라 이 순서 문제였다). 그래서 재생 시작과 "들릴랑 말랑한" 최소 볼륨
+   * 설정을 같은 상태 업데이트(같은 사용자 탭에서 이어지는 호출 체인, 타이머
+   * 개입 없음)로 함께 보낸다 — 이후의 setInterval 기반 페이드는 이미
+   * "음소거 해제된" 상태에서 이어가는 것이라 문제없다.
+   */
   async playAll(): Promise<void> {
+    const AUDIBLE_FLOOR = 0.12;
     await Promise.all(
-      Object.values(this.sounds).map((s) => s?.playFromPositionAsync(0))
+      Object.values(this.sounds).map((s) =>
+        s?.setStatusAsync({
+          positionMillis: 0,
+          shouldPlay: true,
+          volume: AUDIBLE_FLOOR,
+        })
+      )
     );
-    this.setState({ isPlaying: true });
+    const floorMix = INSTRUMENTS.reduce((mix, id) => {
+      mix[id] = AUDIBLE_FLOOR;
+      return mix;
+    }, {} as InstrumentMix);
+    this.setState({ isPlaying: true, mix: floorMix });
 
     if (this.song?.mode === "timeline") {
       this.scheduleAutoFollow(0);
