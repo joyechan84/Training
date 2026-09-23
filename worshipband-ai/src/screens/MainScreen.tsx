@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -19,6 +20,27 @@ import { SongConfig, VoiceIntent } from "@/types";
 interface MainScreenProps {
   /** 콘티에서 선택된 학습 곡. 없으면 배선 확인용 데모 곡을 사용한다. */
   song?: SongConfig;
+}
+
+/**
+ * 임시 디버그용: 우리 AudioEngine(expo-av, setInterval 기반 볼륨 램프)을 완전히
+ * 우회해서 브라우저 Web Audio API로 아주 단순한 비프음을 직접 재생한다.
+ * "소리가 전혀 안 들린다" 리포트를 받았을 때, 문제가 (a) 이 페이지/브라우저에서
+ * 오디오 재생 자체가 막혀있는 것인지, (b) 우리 엔진의 볼륨 램프 방식에만 있는
+ * 문제인지를 가르기 위한 것. 정식 기능이 아니므로 웹에서만 노출한다.
+ */
+function playWebDebugBeep() {
+  const AudioContextCtor =
+    (window as any).AudioContext || (window as any).webkitAudioContext;
+  const ctx = new AudioContextCtor();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.frequency.value = 880;
+  gain.gain.value = 0.5;
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 1);
 }
 
 export function MainScreen({ song = DEMO_SONG }: MainScreenProps) {
@@ -83,6 +105,14 @@ export function MainScreen({ song = DEMO_SONG }: MainScreenProps) {
       />
 
       <InstrumentIndicator mix={state.mix} />
+
+      {Platform.OS === "web" ? (
+        <BigActionButton
+          label="🔊 소리 테스트 (디버그용 비프음)"
+          color="#EBCB8B"
+          onPress={playWebDebugBeep}
+        />
+      ) : null}
 
       {song.mode === "timeline" ? (
         <View style={styles.autoFollowRow}>
