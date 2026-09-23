@@ -1,4 +1,11 @@
 import { SongConfig } from "@/types";
+import {
+  DRUMS_LEARNED,
+  BASS_LEARNED,
+  GUITAR_LEARNED,
+  PIANO_LEARNED,
+  SYNTH_LEARNED,
+} from "@/constants/embeddedAudio.generated";
 
 /**
  * "유튜브에서 학습됨"을 흉내 낸 데모 곡 (timeline 모드).
@@ -32,11 +39,11 @@ export const MOCK_LEARNED_SONG: SongConfig = {
   mode: "timeline",
   sourceYoutubeUrl: "https://www.youtube.com/watch?v=EXAMPLE",
   tracks: {
-    drums: require("../../assets/tracks/learned-demo/drums.mp3"),
-    bass: require("../../assets/tracks/learned-demo/bass.mp3"),
-    guitar: require("../../assets/tracks/learned-demo/guitar.mp3"),
-    piano: require("../../assets/tracks/learned-demo/piano.mp3"),
-    synth: require("../../assets/tracks/learned-demo/synth.mp3"),
+    drums: { uri: DRUMS_LEARNED },
+    bass: { uri: BASS_LEARNED },
+    guitar: { uri: GUITAR_LEARNED },
+    piano: { uri: PIANO_LEARNED },
+    synth: { uri: SYNTH_LEARNED },
   },
   timeline: [
     {
