@@ -86,6 +86,17 @@ export class AudioEngine {
           isLooping: shouldLoop,
           volume: 0,
         });
+        // createAsync 는 소스가 실제로 유효한지 검증하기 전에 resolve 될 수 있다
+        // (예: shouldPlay:false 라 브라우저가 곧장 pause() 로 넘어가버림). 진짜
+        // 로드 실패(예: 404, 디코드 실패)는 나중에 비동기 에러 이벤트로만 온다 —
+        // 그걸 여기서 받아서 playbackError 에 원인 그대로 노출한다.
+        sound.setOnPlaybackStatusUpdate((status) => {
+          if (!status.isLoaded && status.error) {
+            this.setState({
+              playbackError: `${id} 트랙 로드 실패: ${status.error}`,
+            });
+          }
+        });
         return [id, sound] as const;
       })
     );
