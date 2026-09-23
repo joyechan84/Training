@@ -47,6 +47,7 @@ export class AudioEngine {
     bpm: 0,
     keyOffsetSemitones: 0,
     autoFollowEnabled: true,
+    playbackError: null,
   };
 
   subscribe(listener: Listener): () => void {
@@ -97,6 +98,7 @@ export class AudioEngine {
       currentSection: "STOP",
       mix: SECTION_MIX.STOP,
       autoFollowEnabled: true,
+      playbackError: null,
     });
   }
 
@@ -123,15 +125,33 @@ export class AudioEngine {
    */
   async playAll(): Promise<void> {
     const AUDIBLE_FLOOR = 0.12;
-    await Promise.all(
-      Object.values(this.sounds).map((s) =>
-        s?.setStatusAsync({
-          positionMillis: 0,
-          shouldPlay: true,
-          volume: AUDIBLE_FLOOR,
-        })
-      )
-    );
+    this.setState({ playbackError: null });
+
+    try {
+      const results = await Promise.allSettled(
+        Object.entries(this.sounds).map(([id, s]) =>
+          s!.setStatusAsync({
+            positionMillis: 0,
+            shouldPlay: true,
+            volume: AUDIBLE_FLOOR,
+          }).then(
+            () => null,
+            (err) => `${id}: ${err instanceof Error ? err.message : String(err)}`
+          )
+        )
+      );
+      const failures = results
+        .map((r) => (r.status === "fulfilled" ? r.value : `${r.reason}`))
+        .filter((v): v is string => v != null);
+      if (failures.length > 0) {
+        this.setState({ playbackError: `재생 실패: ${failures.join(", ")}` });
+      }
+    } catch (err) {
+      this.setState({
+        playbackError: `재생 실패: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+
     const floorMix = INSTRUMENTS.reduce((mix, id) => {
       mix[id] = AUDIBLE_FLOOR;
       return mix;

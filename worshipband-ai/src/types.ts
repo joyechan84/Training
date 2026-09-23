@@ -90,4 +90,6 @@ export interface EngineState {
    * 하지 않는 구간은 음성 트리거로 잡을 수 없기 때문에 기본값은 true.
    */
   autoFollowEnabled: boolean;
+  /** 재생/일시정지/볼륨 등 오디오 조작 중 실패가 있었다면 그 메시지 (디버깅용, 화면에 노출). */
+  playbackError: string | null;
 }

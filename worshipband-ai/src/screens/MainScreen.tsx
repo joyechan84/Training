@@ -129,6 +129,10 @@ export function MainScreen({ song = DEMO_SONG }: MainScreenProps) {
         </View>
       ) : null}
 
+      {state.playbackError ? (
+        <Text style={styles.error}>⚠️ {state.playbackError}</Text>
+      ) : null}
+
       <BigActionButton
         label={isListening ? "🎙️ 듣는 중 (탭하여 정지)" : "🎙️ 음성 인식 시작"}
         color={isListening ? "#BF616A" : "#5E81AC"}
