@@ -126,7 +126,7 @@
 </head>
 <body>
   <div class="card">
-    <h1>🎲 번호 3개 뽑기</h1>
+    <h1>🎲 번호 뽑기</h1>
 
     <div class="range">
       <span>범위: 1 ~</span>
@@ -138,7 +138,14 @@
         <option value="12" selected>12</option>
       </select>
     </div>
-    <p class="hint">중복 없이 3개를 뽑아요</p>
+    <div class="range">
+      <span>개수:</span>
+      <select id="count-select" aria-label="뽑을 개수">
+        <option value="2">2개</option>
+        <option value="3" selected>3개</option>
+      </select>
+    </div>
+    <p class="hint">중복 없이 <span id="count-hint">3</span>개를 뽑아요</p>
 
     <div id="balls" class="balls">
       <div class="ball">?</div>
@@ -155,8 +162,9 @@
   </div>
 
   <script>
-    const PICK_COUNT = 3;
     const maxSelect = document.getElementById("max-select");
+    const countSelect = document.getElementById("count-select");
+    const countHint = document.getElementById("count-hint");
     const ballsEl = document.getElementById("balls");
     const drawBtn = document.getElementById("draw-btn");
     const historyEl = document.getElementById("history");
@@ -183,6 +191,22 @@
       });
     }
 
+    function renderPlaceholders(count) {
+      ballsEl.innerHTML = "";
+      for (let i = 0; i < count; i++) {
+        const ball = document.createElement("div");
+        ball.className = "ball";
+        ball.textContent = "?";
+        ballsEl.appendChild(ball);
+      }
+    }
+
+    countSelect.addEventListener("change", () => {
+      const count = Number(countSelect.value);
+      countHint.textContent = count;
+      renderPlaceholders(count);
+    });
+
     function addHistory(max, numbers) {
       const li = document.createElement("li");
       li.textContent = `[1~${max}] ${numbers.join(", ")}`;
@@ -193,7 +217,7 @@
 
     drawBtn.addEventListener("click", () => {
       const max = Number(maxSelect.value);
-      const numbers = pickNumbers(max, PICK_COUNT);
+      const numbers = pickNumbers(max, Number(countSelect.value));
       render(numbers);
       addHistory(max, numbers);
     });
