@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>번호 뽑기</title>
+  <style>
+    :root {
+      --bg: #f5f6fa;
+      --card: #ffffff;
+      --text: #222831;
+      --muted: #6b7280;
+      --accent: #4f46e5;
+      --accent-text: #ffffff;
+      --ball: #eef2ff;
+      --ball-border: #c7d2fe;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111318;
+        --card: #1c1f26;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --accent: #818cf8;
+        --accent-text: #111318;
+        --ball: #262a45;
+        --ball-border: #4f46e5;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: var(--card);
+      border-radius: 16px;
+      padding: 28px 24px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      text-align: center;
+    }
+    h1 { margin: 0 0 20px; font-size: 1.5rem; }
+    .range {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 1.1rem;
+      margin-bottom: 8px;
+    }
+    select {
+      font-size: 1.1rem;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--ball-border);
+      background: var(--card);
+      color: var(--text);
+    }
+    .hint { color: var(--muted); font-size: 0.9rem; margin: 0 0 24px; }
+    .balls {
+      display: flex;
+      justify-content: center;
+      gap: 14px;
+      min-height: 72px;
+      margin-bottom: 24px;
+    }
+    .ball {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.7rem;
+      font-weight: 700;
+      background: var(--ball);
+      border: 2px solid var(--ball-border);
+    }
+    .ball.pop { animation: pop 0.35s ease-out; }
+    @keyframes pop {
+      0% { transform: scale(0.3); opacity: 0; }
+      80% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(1); }
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      background: var(--accent);
+      color: var(--accent-text);
+      cursor: pointer;
+    }
+    button:active { transform: scale(0.98); }
+    .history {
+      margin-top: 20px;
+      text-align: left;
+      font-size: 0.9rem;
+      color: var(--muted);
+      max-height: 160px;
+      overflow-y: auto;
+    }
+    .history ol { margin: 6px 0 0; padding-left: 22px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🎲 번호 3개 뽑기</h1>
+
+    <div class="range">
+      <span>범위: 1 ~</span>
+      <select id="max-select" aria-label="최대 번호">
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12" selected>12</option>
+      </select>
+    </div>
+    <p class="hint">중복 없이 3개를 뽑아요</p>
+
+    <div id="balls" class="balls">
+      <div class="ball">?</div>
+      <div class="ball">?</div>
+      <div class="ball">?</div>
+    </div>
+
+    <button id="draw-btn">뽑기</button>
+
+    <div class="history" id="history" hidden>
+      최근 기록
+      <ol id="history-list"></ol>
+    </div>
+  </div>
+
+  <script>
+    const PICK_COUNT = 3;
+    const maxSelect = document.getElementById("max-select");
+    const ballsEl = document.getElementById("balls");
+    const drawBtn = document.getElementById("draw-btn");
+    const historyEl = document.getElementById("history");
+    const historyList = document.getElementById("history-list");
+
+    // 1~max 범위에서 중복 없이 count개를 뽑아 오름차순으로 반환
+    function pickNumbers(max, count) {
+      const pool = Array.from({ length: max }, (_, i) => i + 1);
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      return pool.slice(0, count).sort((a, b) => a - b);
+    }
+
+    function render(numbers) {
+      ballsEl.innerHTML = "";
+      numbers.forEach((n, idx) => {
+        const ball = document.createElement("div");
+        ball.className = "ball pop";
+        ball.style.animationDelay = `${idx * 0.12}s`;
+        ball.textContent = n;
+        ballsEl.appendChild(ball);
+      });
+    }
+
+    function addHistory(max, numbers) {
+      const li = document.createElement("li");
+      li.textContent = `[1~${max}] ${numbers.join(", ")}`;
+      historyList.prepend(li);
+      while (historyList.children.length > 10) historyList.lastChild.remove();
+      historyEl.hidden = false;
+    }
+
+    drawBtn.addEventListener("click", () => {
+      const max = Number(maxSelect.value);
+      const numbers = pickNumbers(max, PICK_COUNT);
+      render(numbers);
+      addHistory(max, numbers);
+    });
+  </script>
+</body>
+</html>
