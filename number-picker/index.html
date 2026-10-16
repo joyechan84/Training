@@ -16,7 +16,7 @@
       --ball-border: #c7d2fe;
     }
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
         --bg: #111318;
         --card: #1c1f26;
         --text: #e5e7eb;
@@ -26,6 +26,16 @@
         --ball: #262a45;
         --ball-border: #4f46e5;
       }
+    }
+    :root[data-theme="dark"] {
+      --bg: #111318;
+      --card: #1c1f26;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #818cf8;
+      --accent-text: #111318;
+      --ball: #262a45;
+      --ball-border: #4f46e5;
     }
     * { box-sizing: border-box; }
     body {
