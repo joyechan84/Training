@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>축산기사 필답 암기장</title>
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="#home">
+        <span class="brand-mark">畜</span>
+        <span class="brand-text">축산기사 <b>필답 암기장</b></span>
+      </a>
+      <nav class="tabs" aria-label="화면 이동">
+        <a class="tab" href="#home" data-view="home">홈</a>
+        <a class="tab" href="#study" data-view="study">암기 학습</a>
+        <a class="tab" href="#exam" data-view="exam">모의고사</a>
+        <a class="tab" href="#list" data-view="list">문제집</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section id="view-home" class="view"></section>
+    <section id="view-study" class="view"></section>
+    <section id="view-exam" class="view"></section>
+    <section id="view-list" class="view"></section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
