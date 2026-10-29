@@ -274,14 +274,68 @@
     return String(t).split(/(\s+)/).map((w) => (/\s/.test(w) ? w : w.slice(0, 1) + w.slice(1).replace(/[가-힣A-Za-z]/g, "○"))).join("");
   }
   // 1단계 힌트. 서술형: 핵심어 초성과 항목 수 / 계산: 풀이식의 숫자를 □로 가린 공식 틀
-  function hint1HTML(item) {
-    if (item.calc) {
-      const lines = item.a.map((l) => {
-        const head = (l.match(/^\(\d+\)\s*/) || [""])[0];
-        return esc(head) + esc(l.slice(head.length)).replace(/\d+(\.\d+)?/g, "□").replace(/-&gt;/g, " → ");
-      });
-      return `<p class="small muted" style="margin:0">풀이식의 숫자를 □로 가렸어요. 공식을 떠올려 숫자를 넣어 보세요.</p><ul class="alines">${lines.map((l) => `<li class="formula">${l}</li>`).join("")}</ul>`;
+  // 계산 문제 힌트 1: 공식은 보이지 않게 한다. 각 줄의 '구하는 값' 이름만 두고,
+  // 공식의 한글 용어는 초성으로, 숫자는 □로 바꾼다. 숫자만 대입한 줄은 '= ?'로 남긴다.
+  const UNIT = /\d+(\.\d+)?\s*(천만원|만원|천원|억원|억|원|kg|g|마리|포대|개|일|병|mL|Mcal|%)|\((천원|만원|원)\)/g;
+  function maskFormula(t) {
+    return initials(t).replace(/\d+(\.\d+)?/g, "□");
+  }
+  function hasWords(t) {
+    return /[가-힣]{2,}/.test(t.replace(UNIT, ""));
+  }
+  // '정액법 : (취득원가 – 잔존가액) / 내용연수' → 이름은 두고 뒤의 공식만 가린다
+  function labelAndMask(t) {
+    const m = t.match(/^([^:()]{1,16})\s:\s*(.+)$/);
+    return m ? `${m[1]} : ${maskFormula(m[2])}` : maskFormula(t);
+  }
+  // 반환값: 보여 줄 줄(문자열), 숫자 대입 줄이면 "step", 건너뛸 줄이면 null
+  function calcHintLine(l) {
+    const head = (l.match(/^(\(\d+\)|[가나다라마바사]\.|@)\s*/) || [""])[0];
+    const body = l.slice(head.length).trim();
+    const pre = body.match(/^(공식|정답)\s*[:=]\s*/);
+    if (pre) {
+      const rest = body.slice(pre[0].length);
+      if (!hasWords(rest)) return "step";
+      const inner = rest.includes("=") && hasWords(rest.slice(0, rest.indexOf("="))) ? calcHintLine(rest) : maskFormula(rest);
+      return `${head}${pre[1]} : ${inner}`;
     }
+    if (!body.includes("=")) {
+      if (!hasWords(body)) return "step";
+      return head + (body.length <= 20 && !/\d/.test(body) ? body : labelAndMask(body));
+    }
+    const lhs = body.slice(0, body.indexOf("=")).trim();
+    const rhs = body.slice(body.indexOf("=") + 1);
+    const lhsWords = hasWords(lhs);
+    if (!lhsWords && !hasWords(rhs)) return lhs ? "step" : null;
+    let left = lhs;
+    if (/:/.test(lhs)) left = labelAndMask(lhs);
+    else if (!lhsWords && /\d/.test(lhs)) left = maskFormula(lhs);
+    return head + (left ? left + " = " : "= ") + (hasWords(rhs) ? maskFormula(rhs.split("=")[0].trim()) : "?");
+  }
+  function calcHint1HTML(item) {
+    const lines = [];
+    let steps = 0;
+    item.a.forEach((l) => {
+      const h = calcHintLine(l);
+      if (h === "step") steps++;
+      else if (h && !lines.includes(h)) lines.push(h);
+    });
+    const note = lines.length
+      ? "공식의 용어는 초성, 숫자는 □로 가렸어요. 무엇을 어떤 순서로 구하는지 떠올려 보세요."
+      : `정답에 공식 이름 없이 계산식만 있는 문제예요. ${steps}단계로 계산합니다. 어떤 공식을 쓸지 먼저 떠올려 보세요.`;
+    return `<p class="small muted" style="margin:0">${note}</p>${lines.length ? `<ul class="alines">${lines.map((l) => `<li class="formula">${esc(l)}</li>`).join("")}</ul>` : ""}`;
+  }
+  // 계산 문제 힌트 2: 공식이 드러난 풀이식, 숫자만 □
+  function calcHint2HTML(item) {
+    const lines = item.a.map((l) => {
+      const head = (l.match(/^\(\d+\)\s*/) || [""])[0];
+      return esc(head) + esc(l.slice(head.length)).replace(/\d+(\.\d+)?/g, "□").replace(/-&gt;/g, " → ");
+    });
+    return `<ul class="alines">${lines.map((l) => `<li class="formula">${l}</li>`).join("")}</ul>`;
+  }
+  // 1단계 힌트. 서술형: 핵심어 초성과 항목 수 / 계산: 공식 초성
+  function hint1HTML(item) {
+    if (item.calc) return calcHint1HTML(item);
     const terms = termsOf(item);
     const items = item.a.filter((l) => /^\(\d+\)/.test(l)).length;
     return `<p class="small muted" style="margin:0">${items ? `답은 ${items}가지 항목, ` : ""}핵심어 ${terms.length}개의 초성이에요.</p>
@@ -294,16 +348,10 @@
   function hintPanelHTML(item) {
     const lv = hintLevel();
     if (!lv) return "";
-    let html = `<div class="hint-panel"><div class="answer-label">힌트 1</div>${hint1HTML(item)}</div>`;
+    let html = `<div class="hint-panel"><div class="answer-label">${item.calc ? "힌트 1 · 공식 초성" : "힌트 1"}</div>${hint1HTML(item)}</div>`;
     if (lv >= 2) {
-      const label = item.calc ? "힌트 2 · 계산 과정 (최종 답만 □)" : "힌트 2 · 정답 틀 (핵심어는 첫 글자만)";
-      const body = item.calc
-        ? `<ul class="alines">${item.a.map((l) => {
-          if (!isFormula(l)) return `<li>${esc(l).replace(/-&gt;/g, " → ")}</li>`;
-          const cut = l.lastIndexOf("=") + 1;
-          return `<li class="formula">${esc(l.slice(0, cut))} <span class="hint-mask">□</span></li>`;
-        }).join("")}</ul>`
-        : answerHTML(item, "mask");
+      const label = item.calc ? "힌트 2 · 공식 공개 (숫자는 □)" : "힌트 2 · 정답 틀 (핵심어는 첫 글자만)";
+      const body = item.calc ? calcHint2HTML(item) : answerHTML(item, "mask");
       html += `<div class="hint-panel"><div class="answer-label">${label}</div>${body}</div>`;
     }
     return html;
