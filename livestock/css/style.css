@@ -151,6 +151,7 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
 .action:hover { border-color: var(--accent); }
 .action b { font-size: 16px; }
 .action span { font-size: 13px; color: var(--muted); }
+.action.main { grid-column: 1 / -1; }
 .action.main { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .action.main span { color: var(--on-accent); opacity: .85; }
 
@@ -169,7 +170,7 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
 
 /* ---------- study setup ---------- */
 .setup h2 { font-size: 18px; margin-bottom: 4px; }
-.mode-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.mode-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .mode {
   border: 1px solid var(--line); border-radius: 8px; padding: 12px; background: var(--card); text-align: left;
   display: flex; flex-direction: column; gap: 2px;
@@ -210,6 +211,15 @@ mark.k { background: linear-gradient(transparent 38%, var(--hl) 38%); color: inh
 mark.k.hit { background: linear-gradient(transparent 38%, var(--good-soft) 38%); box-shadow: inset 0 -2px 0 var(--good); }
 mark.k.miss { box-shadow: inset 0 -2px 0 var(--bad); }
 
+/* 가린 핵심어: 글자를 흐리게 번지게 해서 읽을 수 없게 하고, 누르면 형광펜으로 드러난다 */
+.cover {
+  display: inline; border: none; margin: 0 1px; padding: 0 3px; border-radius: 4px; font: inherit; line-height: inherit;
+  background: var(--accent-soft); color: transparent; text-shadow: 0 0 7px var(--ink); cursor: pointer;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone; user-select: none;
+}
+.cover:hover { background: var(--hl); }
+.cover.open { color: inherit; text-shadow: none; background: linear-gradient(transparent 38%, var(--hl) 38%); user-select: text; }
+.cover-bar { gap: 6px; }
 .coverage { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 13px; padding: 8px 12px; border-radius: 8px; background: var(--paper); }
 .coverage .muted { white-space: nowrap; }
 .coverage .miss-list, .coverage .all-hit { flex-basis: 100%; }
