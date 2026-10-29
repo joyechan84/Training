@@ -54,6 +54,7 @@
   function gradeCard(id, g) {
     const c = card(id);
     c.seen++;
+    c.last = g;
     if (g === "good") {
       c.box = Math.min(5, c.box + 1);
       c.ok++;
@@ -79,9 +80,11 @@
     const c = peekCard(id);
     return !!c && c.seen > 0 && c.due <= Date.now();
   }
+  // 못 외운 문제: 마지막 평가가 '모름'(모의고사의 '틀림' 포함)인 문제. 따로 모아 다시 공부한다.
   function isWrong(id) {
     const c = peekCard(id);
-    return !!c && c.ng > 0 && c.box < MASTER_BOX;
+    if (!c || !c.seen) return false;
+    return (c.last || (c.box === 0 && c.ng > 0 ? "again" : "")) === "again";
   }
 
   // ---------- 유틸 ----------
@@ -430,6 +433,123 @@
     return `<p class="small muted" style="margin:0">비슷한 문제: ${item.sim.map((s) => `<a href="#list" data-goto="${s}">문 ${s}</a>`).join(", ")}</p>`;
   }
 
+  // ---------- 계산기 (계산 문제 옆) ----------
+  const calc = { key: null, expr: "", result: "", history: [] };
+  // 사칙연산·괄호·거듭제곱(^)·퍼센트(%)만 계산하는 작은 수식 해석기
+  function evalExpr(src) {
+    const s = src.replace(/[×xX]/g, "*").replace(/÷/g, "/").replace(/[−–]/g, "-").replace(/[\s,]/g, "");
+    let i = 0;
+    const peek = () => s[i];
+    function num() {
+      const m = s.slice(i).match(/^(\d+\.?\d*|\.\d+)/);
+      if (!m) throw new Error("bad");
+      i += m[0].length;
+      return parseFloat(m[0]);
+    }
+    function factor() {
+      if (peek() === "+") { i++; return factor(); }
+      if (peek() === "-") { i++; return -factor(); }
+      let v;
+      if (peek() === "(") {
+        i++;
+        v = expr();
+        if (peek() !== ")") throw new Error("bad");
+        i++;
+      } else v = num();
+      while (peek() === "%" || peek() === "²") { v = peek() === "%" ? v / 100 : v * v; i++; }
+      if (peek() === "^") { i++; v = Math.pow(v, factor()); }
+      return v;
+    }
+    function term() {
+      let v = factor();
+      while (peek() === "*" || peek() === "/" || peek() === "(") {
+        const op = peek() === "(" ? "*" : s[i++];
+        const r = factor();
+        v = op === "*" ? v * r : v / r;
+      }
+      return v;
+    }
+    function expr() {
+      let v = term();
+      while (peek() === "+" || peek() === "-") {
+        const op = s[i++];
+        const r = term();
+        v = op === "+" ? v + r : v - r;
+      }
+      return v;
+    }
+    const v = expr();
+    if (i !== s.length || !isFinite(v)) throw new Error("bad");
+    return String(Number(v.toFixed(6)));
+  }
+  function tryEval(src) {
+    try { return src.trim() ? evalExpr(src) : ""; } catch (e) { return null; }
+  }
+  const CALC_KEYS = ["C", "(", ")", "÷", "7", "8", "9", "×", "4", "5", "6", "−", "1", "2", "3", "+", "0", ".", "⌫", "="];
+  function calcPadHTML(key) {
+    if (calc.key !== key) Object.assign(calc, { key, expr: "", result: "", history: [] });
+    const cls = (k) => (k === "=" ? "eq" : /[÷×−+()]/.test(k) ? "op" : k === "C" || k === "⌫" ? "fn" : "");
+    return `<aside class="calc-pad" aria-label="계산기">
+      <div class="answer-label">계산기</div>
+      <ul class="calc-history">${calc.history.map((h) => `<li>${esc(h)}</li>`).join("")}</ul>
+      <input id="calc-expr" class="calc-expr num" value="${esc(calc.expr)}" placeholder="예: (100-80)/(100-50)*100" autocomplete="off" spellcheck="false" aria-label="계산식" />
+      <div class="calc-result num" id="calc-result" aria-live="polite">${calc.result ? "= " + esc(calc.result) : ""}</div>
+      <div class="calc-keys">${CALC_KEYS.map((k) => `<button type="button" class="${cls(k)}" data-ck="${k}">${k}</button>`).join("")}</div>
+      <button type="button" class="btn small" data-ck="insert">결과를 답안에 넣기</button>
+    </aside>`;
+  }
+  function withCalc(cardHTML, key) {
+    return `<div class="calc-layout">${cardHTML}${calcPadHTML(key)}</div>`;
+  }
+  function syncCalc() {
+    const inp = $("#calc-expr");
+    if (inp && inp.value !== calc.expr) inp.value = calc.expr;
+    const preview = tryEval(calc.expr);
+    const out = $("#calc-result");
+    if (out) out.textContent = calc.result ? "= " + calc.result : preview ? "= " + preview : "";
+    const hist = $(".calc-history");
+    if (hist) hist.innerHTML = calc.history.map((h) => `<li>${esc(h)}</li>`).join("");
+  }
+  function calcPress(k) {
+    if (k === "C") { calc.expr = ""; calc.result = ""; }
+    else if (k === "⌫") { calc.expr = calc.expr.slice(0, -1); calc.result = ""; }
+    else if (k === "=") {
+      const v = tryEval(calc.expr);
+      if (v === null || v === "") { toast("계산식을 확인해 주세요"); return; }
+      calc.history = calc.history.concat(`${calc.expr} = ${v}`).slice(-4);
+      calc.expr = v;
+      calc.result = "";
+    } else if (k === "insert") {
+      const v = tryEval(calc.expr);
+      const ta = $("#typed") || $("#exam-answer");
+      if (!ta) { toast("답안 칸이 없는 화면이에요"); return; }
+      if (!v) { toast("넣을 계산 결과가 없어요"); return; }
+      ta.value = (ta.value && !/\s$/.test(ta.value) ? ta.value + " " : ta.value) + v;
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      toast(`${v} 을(를) 답안에 넣었어요`);
+      return;
+    } else {
+      calc.expr += k;
+      calc.result = "";
+    }
+    syncCalc();
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-ck]");
+    if (!b) return;
+    e.preventDefault();
+    calcPress(b.dataset.ck);
+  });
+  document.addEventListener("input", (e) => {
+    if (e.target.id !== "calc-expr") return;
+    calc.expr = e.target.value;
+    calc.result = "";
+    syncCalc();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.id === "calc-expr" && e.key === "Enter") { e.preventDefault(); calcPress("="); }
+  });
+
   // ---------- 라우터 ----------
   const VIEWS = ["home", "study", "exam", "list"];
   function currentView() {
@@ -504,7 +624,7 @@
           <button class="action" data-act="hint"><b>힌트 보고 써 보기</b><span>초성·공식 힌트를 보며 답안을 직접 작성</span></button>
           <button class="action" data-act="blank"><b>빈칸 채우기</b><span>정답 속 핵심어를 직접 써서 확인</span></button>
           <button class="action" data-act="exam"><b>모의고사</b><span>20문항 서술 후 자가 채점</span></button>
-          <button class="action" data-act="wrong" ${wrong ? "" : "disabled"}><b>틀린 문제 다시</b><span>${wrong ? `오답 ${wrong}개` : "아직 틀린 문제가 없어요"}</span></button>
+          <button class="action" data-act="wrong" ${wrong ? "" : "disabled"}><b>못 외운 문제 모아 보기</b><span>${wrong ? `'모름'으로 표시한 ${wrong}문제` : "아직 못 외운 문제가 없어요"}</span></button>
         </div>
 
         <div class="card">
@@ -561,7 +681,8 @@
     if (cfg.source === "new") items = items.filter((q) => status(q.id) === "new");
     let ids = items.map((q) => q.id);
     if (cfg.source === "today") {
-      const due = ids.filter(isDue).sort((a, b) => card(a).due - card(b).due);
+      // 못 외운 문제는 오늘의 학습에 섞지 않고 '못 외운 문제'로 따로 모은다
+      const due = ids.filter((id) => isDue(id) && !isWrong(id)).sort((a, b) => card(a).due - card(b).due);
       const fresh = ids.filter((id) => status(id) === "new");
       const n = cfg.count || 20;
       ids = due.slice(0, n);
@@ -600,7 +721,8 @@
     if (mode === "blank") body = blankHTML(item);
     if (mode === "hint") body = flashHTML(item);
     if (mode === "seq") body = seqHTML(item);
-    $("#view-study").innerHTML = `<div class="stack">${top}<div class="card qcard" id="qcard">${body}</div></div>`;
+    const cardHTML = `<div class="card qcard" id="qcard">${body}</div>`;
+    $("#view-study").innerHTML = `<div class="stack">${top}${item.calc && mode !== "seq" ? withCalc(cardHTML, "s" + id + "-" + session.idx) : cardHTML}</div>`;
     if ((mode === "flash" || mode === "hint") && !session.revealed) {
       const ta = $("#typed");
       if (ta) ta.value = session.typed;
@@ -707,15 +829,6 @@
     const id = session.queue[session.idx];
     gradeCard(id, g);
     session.results[id] = g;
-    if (g === "again") {
-      // 모르는 문제는 몇 문제 뒤에 다시 보여 준다 (한 세션에 최대 3번)
-      const n = (session.requeued[id] || 0) + 1;
-      if (n <= 3) {
-        session.requeued[id] = n;
-        const pos = Math.min(session.queue.length, session.idx + 4);
-        session.queue.splice(pos, 0, id);
-      }
-    }
     session.idx++;
     session.revealed = false;
     session.typed = "";
@@ -731,21 +844,25 @@
     const good = vals.filter((v) => v === "good").length;
     const hard = vals.filter((v) => v === "hard").length;
     const again = vals.filter((v) => v === "again").length;
-    const notGood = Object.keys(session.results).filter((id) => session.results[id] !== "good").map(Number);
+    const missed = Object.keys(session.results).filter((id) => session.results[id] === "again").map(Number);
+    const allMissed = QUESTIONS.filter((q) => isWrong(q.id)).length;
     $("#view-study").innerHTML = `<div class="card done-card stack">
       <h2>이번 학습 끝!</h2>
-      <p class="muted" style="margin:0">${session.total}문항 · 마지막 평가 기준</p>
+      <p class="muted" style="margin:0">${session.total}문항</p>
       <div class="stat-row">
         <div class="stat"><b style="color:var(--good)">${good}</b><span>완벽</span></div>
         <div class="stat"><b style="color:var(--warn)">${hard}</b><span>애매</span></div>
         <div class="stat"><b style="color:var(--bad)">${again}</b><span>모름</span></div>
       </div>
       <div class="row" style="justify-content:center">
-        ${notGood.length ? `<button class="btn primary" data-s="retry">완벽하지 않은 ${notGood.length}문제 다시</button>` : ""}
+        ${missed.length ? `<button class="btn primary" data-s="retry">이번에 못 외운 ${missed.length}문제 다시</button>` : ""}
+        ${allMissed ? `<button class="btn" data-s="missed">못 외운 문제 전체 ${allMissed}개</button>` : ""}
         <button class="btn" data-s="setup">다른 범위 학습</button>
         <a class="btn" href="#home" style="text-decoration:none">홈으로</a>
-      </div></div>`;
-    session.retryIds = notGood;
+      </div>
+      ${again ? '<p class="small muted" style="margin:0">\'모름\'으로 표시한 문제는 홈의 \'못 외운 문제 모아 보기\'와 문제집의 \'못 외운\' 필터에 모여 있어요.</p>' : ""}
+      </div>`;
+    session.retryIds = missed;
   }
 
   function renderSetup() {
@@ -761,7 +878,7 @@
         ${modeBtn("seq", "순서 맞추기", "과정·단계를 순서대로 배열 (7문항)")}
       </div></div>
       <div class="field"><span class="label">문제 범위</span><div class="row">
-        ${chip("source", "today", "오늘의 복습+새 문제")}${chip("source", "all", "전체")}${chip("source", "new", "안 본 문제")}${chip("source", "wrong", "틀린 문제")}${chip("source", "star", "별표")}
+        ${chip("source", "today", "오늘의 복습+새 문제")}${chip("source", "all", "전체")}${chip("source", "new", "안 본 문제")}${chip("source", "wrong", "못 외운 문제")}${chip("source", "star", "별표")}
       </div></div>
       <div class="field"><span class="label">분야 (선택 안 하면 전체)</span><div class="row">
         ${CATS.map((c) => `<button class="chip ${setup.cats.includes(c) ? "on" : ""}" data-cat="${c}">${c}</button>`).join("")}
@@ -833,6 +950,7 @@
       session = { mode: session.mode, queue: ids, idx: 0, total: ids.length, results: {}, requeued: {}, revealed: false, typed: "" };
       renderStudy();
     }
+    if (act === "missed") startStudy({ source: "wrong", count: 0, cats: [], calcOnly: false });
   });
   $("#view-study").addEventListener("input", (e) => {
     if (e.target.id === "typed" && session) session.typed = e.target.value;
@@ -840,6 +958,7 @@
 
   document.addEventListener("keydown", (e) => {
     if (currentView() !== "study" || !session || session.idx >= session.queue.length) return;
+    if (e.target.id === "calc-expr") return;
     const inText = e.target.tagName === "TEXTAREA" || e.target.tagName === "INPUT";
     const reveal = $('[data-s="reveal"]');
     const check = $('[data-s="check"]');
@@ -897,7 +1016,7 @@
     $("#view-exam").innerHTML = `<div class="stack">
       <div class="session-top"><span>모의고사 · <span class="num">${d.cur + 1}/${d.ids.length}</span></span><span class="timer" id="timer"></span></div>
       <div class="exam-nav">${nav}</div>
-      <div class="card qcard">${questionHTML(item, { noStar: true })}
+      ${item.calc ? '<div class="calc-layout">' : ""}<div class="card qcard">${questionHTML(item, { noStar: true })}
         <textarea id="exam-answer" placeholder="답안을 작성하세요">${esc(d.answers[d.cur])}</textarea>
         <div class="row">
           <button class="btn" data-e="prev" ${d.cur === 0 ? "disabled" : ""}>이전</button>
@@ -907,7 +1026,7 @@
             ? `<span class="small muted">${unanswered ? `빈 답안 ${unanswered}개가 있어요.` : ""} 제출할까요?</span><button class="btn primary" data-e="submit-yes">제출</button><button class="btn ghost" data-e="submit-no">계속 쓰기</button>`
             : `<button class="btn primary" data-e="submit">답안 제출</button>`}
         </div>
-      </div>
+      </div>${item.calc ? calcPadHTML("e" + d.start + "-" + d.cur) + "</div>" : ""}
       <div class="row"><button class="btn ghost small" data-e="abort">시험 그만두기</button></div>
     </div>`;
     const tick = () => {
@@ -1045,7 +1164,7 @@
           <button class="chip ${listState.cat === "" ? "on" : ""}" data-lcat="">전체</button>
           ${CATS.map((c) => `<button class="chip ${listState.cat === c ? "on" : ""}" data-lcat="${c}">${c}</button>`).join("")}
         </div>
-        <div class="row">${fchip("", "모두")}${fchip("calc", "계산")}${fchip("star", "★ 별표")}${fchip("wrong", "오답")}${fchip("new", "미학습")}${fchip("master", "암기 완료")}
+        <div class="row">${fchip("", "모두")}${fchip("calc", "계산")}${fchip("star", "★ 별표")}${fchip("wrong", "못 외운")}${fchip("new", "미학습")}${fchip("master", "암기 완료")}
           <span class="small muted" id="list-count"></span></div>
       </div>
       <div class="qlist" id="qlist"></div>`;
