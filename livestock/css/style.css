@@ -211,15 +211,11 @@ mark.k { background: linear-gradient(transparent 38%, var(--hl) 38%); color: inh
 mark.k.hit { background: linear-gradient(transparent 38%, var(--good-soft) 38%); box-shadow: inset 0 -2px 0 var(--good); }
 mark.k.miss { box-shadow: inset 0 -2px 0 var(--bad); }
 
-/* 가린 핵심어: 글자를 흐리게 번지게 해서 읽을 수 없게 하고, 누르면 형광펜으로 드러난다 */
-.cover {
-  display: inline; border: none; margin: 0 1px; padding: 0 3px; border-radius: 4px; font: inherit; line-height: inherit;
-  background: var(--accent-soft); color: transparent; text-shadow: 0 0 7px var(--ink); cursor: pointer;
-  -webkit-box-decoration-break: clone; box-decoration-break: clone; user-select: none;
-}
-.cover:hover { background: var(--hl); }
-.cover.open { color: inherit; text-shadow: none; background: linear-gradient(transparent 38%, var(--hl) 38%); user-select: text; }
-.cover-bar { gap: 6px; }
+/* 힌트: 초성 칩과 첫 글자만 남긴 정답 틀 */
+.hint-panel { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 8px; background: var(--warn-soft); }
+.hint-panel .answer-label { color: var(--warn); margin: 0; }
+.hint-chip { font-family: var(--font-num); font-size: 14px; padding: 3px 9px; border-radius: 6px; background: var(--card); border: 1px solid var(--line); letter-spacing: .08em; }
+.hint-mask { background: linear-gradient(transparent 38%, var(--hl) 38%); padding: 0 2px; letter-spacing: .04em; }
 .coverage { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 13px; padding: 8px 12px; border-radius: 8px; background: var(--paper); }
 .coverage .muted { white-space: nowrap; }
 .coverage .miss-list, .coverage .all-hit { flex-basis: 100%; }

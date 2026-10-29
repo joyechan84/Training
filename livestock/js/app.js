@@ -256,7 +256,7 @@
         if (opts.blankCols && opts.blankCols.includes(ci)) {
           return `<td><input class="blank" data-term="${esc(c)}" data-row="${ri}" aria-label="${esc(t.head[ci])} 빈칸" autocomplete="off" /></td>`;
         }
-        if (opts.coverCols && opts.coverCols.includes(ci)) return `<td>${coverBtn(c)}</td>`;
+        if (opts.maskCols && opts.maskCols.includes(ci)) return `<td><span class="hint-mask">${esc(firstCharHint(c))}</span></td>`;
         const wrap = String(c).length > 16 ? ' class="wrap-cell"' : "";
         return `<td${wrap}>${esc(c)}</td>`;
       }).join("") + "</tr>")
@@ -264,21 +264,49 @@
     return `<div class="tbl-wrap"><table class="data"><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
   }
 
-  function coverBtn(t) {
-    return `<button type="button" class="cover" aria-pressed="false" aria-label="가려진 핵심어, 눌러서 보기">${esc(t)}</button>`;
+  // ---------- 힌트 ----------
+  const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+  function initials(t) {
+    return String(t).replace(/[가-힣]/g, (c) => CHO[Math.floor((c.charCodeAt(0) - 0xac00) / 588)]);
   }
-  // 가림 상태 표시줄: 남은 개수와 모두 보기/다시 가리기
-  function coverBarHTML(root) {
-    const all = $all(".cover", root);
-    const left = all.filter((b) => !b.classList.contains("open")).length;
-    return `<span class="small muted">가려진 핵심어 <b class="num">${left}</b>/${all.length}</span>
-      <button type="button" class="btn small" data-cover-all="open">모두 보기</button>
-      <button type="button" class="btn small ghost" data-cover-all="hide">다시 가리기</button>`;
+  // 낱말마다 첫 글자만 남기고 나머지는 ○ (숫자·기호는 그대로)
+  function firstCharHint(t) {
+    return String(t).split(/(\s+)/).map((w) => (/\s/.test(w) ? w : w.slice(0, 1) + w.slice(1).replace(/[가-힣A-Za-z]/g, "○"))).join("");
   }
-  function refreshCoverBars() {
-    $all(".cover-bar").forEach((bar) => {
-      bar.innerHTML = coverBarHTML(bar.closest(".cover-scope"));
-    });
+  // 1단계 힌트. 서술형: 핵심어 초성과 항목 수 / 계산: 풀이식의 숫자를 □로 가린 공식 틀
+  function hint1HTML(item) {
+    if (item.calc) {
+      const lines = item.a.map((l) => {
+        const head = (l.match(/^\(\d+\)\s*/) || [""])[0];
+        return esc(head) + esc(l.slice(head.length)).replace(/\d+(\.\d+)?/g, "□").replace(/-&gt;/g, " → ");
+      });
+      return `<p class="small muted" style="margin:0">풀이식의 숫자를 □로 가렸어요. 공식을 떠올려 숫자를 넣어 보세요.</p><ul class="alines">${lines.map((l) => `<li class="formula">${l}</li>`).join("")}</ul>`;
+    }
+    const terms = termsOf(item);
+    const items = item.a.filter((l) => /^\(\d+\)/.test(l)).length;
+    return `<p class="small muted" style="margin:0">${items ? `답은 ${items}가지 항목, ` : ""}핵심어 ${terms.length}개의 초성이에요.</p>
+      <div class="row">${terms.map((t) => `<span class="hint-chip">${esc(initials(t))}</span>`).join("")}</div>`;
+  }
+  // 힌트 보고 쓰기 모드는 1단계 힌트를 펼친 채로 시작한다
+  function hintLevel() {
+    return Math.max(session.hint || 0, session.mode === "hint" ? 1 : 0);
+  }
+  function hintPanelHTML(item) {
+    const lv = hintLevel();
+    if (!lv) return "";
+    let html = `<div class="hint-panel"><div class="answer-label">힌트 1</div>${hint1HTML(item)}</div>`;
+    if (lv >= 2) {
+      const label = item.calc ? "힌트 2 · 계산 과정 (최종 답만 □)" : "힌트 2 · 정답 틀 (핵심어는 첫 글자만)";
+      const body = item.calc
+        ? `<ul class="alines">${item.a.map((l) => {
+          if (!isFormula(l)) return `<li>${esc(l).replace(/-&gt;/g, " → ")}</li>`;
+          const cut = l.lastIndexOf("=") + 1;
+          return `<li class="formula">${esc(l.slice(0, cut))} <span class="hint-mask">□</span></li>`;
+        }).join("")}</ul>`
+        : answerHTML(item, "mask");
+      html += `<div class="hint-panel"><div class="answer-label">${label}</div>${body}</div>`;
+    }
+    return html;
   }
 
   function questionHTML(item, opts) {
@@ -293,9 +321,9 @@
     return html;
   }
 
-  // mode: "show" (핵심어 형광펜), "check" (입력과 대조), "blank" (빈칸), "cover" (흐리게 가리고 눌러서 보기)
+  // mode: "show" (핵심어 형광펜), "check" (입력과 대조), "blank" (빈칸), "mask" (힌트: 핵심어를 첫 글자만)
   function answerHTML(item, mode, userText) {
-    const terms = (mode === "blank" || mode === "cover" ? blankTerms(item) : termsOf(item)).slice().sort((a, b) => b.length - a.length);
+    const terms = (mode === "blank" || mode === "mask" ? blankTerms(item) : termsOf(item)).slice().sort((a, b) => b.length - a.length);
     const lines = item.a.map((l) => esc(l));
     const slots = [];
     const used = new Set();
@@ -317,7 +345,7 @@
         const w = Math.max(4, Math.min(16, t.length + 1));
         return `<input class="blank" data-term="${esc(t)}" style="width:${w + 1}em" aria-label="빈칸" autocomplete="off" />`;
       }
-      if (mode === "cover") return coverBtn(t);
+      if (mode === "mask") return `<span class="hint-mask">${esc(firstCharHint(t))}</span>`;
       if (mode === "check") {
         return `<mark class="k ${textHits(userText, t) ? "hit" : "miss"}">${esc(t)}</mark>`;
       }
@@ -332,7 +360,7 @@
     let html = "";
     if (item.atable) {
       html += mode === "blank" ? tableHTML(item.atable, { blankCols: [1, 3] })
-        : mode === "cover" ? tableHTML(item.atable, { coverCols: [1, 3] }) : tableHTML(item.atable);
+        : mode === "mask" ? tableHTML(item.atable, { maskCols: [1, 3] }) : tableHTML(item.atable);
     }
     if (lis.length) html += `<ul class="alines">${lis.join("")}</ul>`;
     return html;
@@ -425,7 +453,7 @@
 
         <div class="actions">
           <button class="action main" data-act="today"><b>오늘의 학습 시작</b><span>복습할 문제 ${due}개 + 새 문제</span></button>
-          <button class="action" data-act="cover"><b>가리고 외우기</b><span>흐린 핵심어를 떠올리고 눌러서 확인</span></button>
+          <button class="action" data-act="hint"><b>힌트 보고 써 보기</b><span>초성·공식 힌트를 보며 답안을 직접 작성</span></button>
           <button class="action" data-act="blank"><b>빈칸 채우기</b><span>정답 속 핵심어를 직접 써서 확인</span></button>
           <button class="action" data-act="exam"><b>모의고사</b><span>20문항 서술 후 자가 채점</span></button>
           <button class="action" data-act="wrong" ${wrong ? "" : "disabled"}><b>틀린 문제 다시</b><span>${wrong ? `오답 ${wrong}개` : "아직 틀린 문제가 없어요"}</span></button>
@@ -456,7 +484,7 @@
     const act = b.dataset.act;
     if (act === "today") startStudy({ source: "today", mode: "flash", count: 20, order: "random", cats: [], calcOnly: false });
     if (act === "blank") { setup.mode = "blank"; go("study"); }
-    if (act === "cover") { setup.mode = "cover"; go("study"); }
+    if (act === "hint") { setup.mode = "hint"; go("study"); }
     if (act === "exam") go("exam");
     if (act === "wrong") startStudy({ source: "wrong", mode: "flash", count: 0, order: "random", cats: [], calcOnly: false });
     if (act === "reset") {
@@ -516,17 +544,16 @@
     const item = BY_ID.get(id);
     const mode = session.mode === "seq" && !item.seq ? "flash" : session.mode;
     const doneCount = Object.keys(session.results).length;
-    const top = `<div class="session-top"><span>${{ flash: "암기 카드", cover: "가리고 외우기", blank: "빈칸 채우기", seq: "순서 맞추기" }[session.mode]} · <span class="num">${Math.min(session.idx + 1, session.queue.length)}/${session.queue.length}</span></span>
+    const top = `<div class="session-top"><span>${{ flash: "암기 카드", hint: "힌트 보고 쓰기", blank: "빈칸 채우기", seq: "순서 맞추기" }[session.mode]} · <span class="num">${Math.min(session.idx + 1, session.queue.length)}/${session.queue.length}</span></span>
       <button class="btn ghost small" data-s="quit">그만하기</button></div>
       <div class="progress"><i style="width:${(doneCount / session.total) * 100}%"></i></div>`;
     let body = "";
     if (mode === "flash") body = flashHTML(item);
     if (mode === "blank") body = blankHTML(item);
-    if (mode === "cover") body = coverHTML(item);
+    if (mode === "hint") body = flashHTML(item);
     if (mode === "seq") body = seqHTML(item);
     $("#view-study").innerHTML = `<div class="stack">${top}<div class="card qcard" id="qcard">${body}</div></div>`;
-    refreshCoverBars();
-    if (mode === "flash" && !session.revealed) {
+    if ((mode === "flash" || mode === "hint") && !session.revealed) {
       const ta = $("#typed");
       if (ta) ta.value = session.typed;
     }
@@ -545,25 +572,20 @@
     </div>`;
   }
 
-  function coverHTML(item) {
-    let html = questionHTML(item);
-    html += `<div class="answer cover-scope"><div class="row" style="justify-content:space-between"><div class="answer-label">정답 · 흐린 칸을 눌러 확인</div>
-      <div class="row cover-bar"></div></div>${answerHTML(item, "cover")}</div>`;
-    html += similarHTML(item);
-    html += `<p class="small muted" style="margin:0">가려진 말을 먼저 떠올린 뒤 눌러 보세요. 다 보고 나서 스스로 채점하세요.</p>`;
-    html += gradeButtons(null);
-    return html;
-  }
-
   function flashHTML(item) {
     let html = questionHTML(item);
     if (!session.revealed) {
-      html += `<textarea id="typed" placeholder="답안을 써 보거나 머릿속으로 떠올린 뒤 정답을 확인하세요. 써 두면 핵심어를 몇 개 맞혔는지 알려 드려요."></textarea>
-        <div class="row"><button class="btn primary big" data-s="reveal">정답 보기<kbd>Space</kbd></button></div>`;
+      const lv = hintLevel();
+      html += hintPanelHTML(item);
+      html += `<textarea id="typed" placeholder="${lv ? "힌트를 보면서 답안을 써 보세요." : "답안을 써 보거나 머릿속으로 떠올린 뒤 정답을 확인하세요. 써 두면 핵심어를 몇 개 맞혔는지 알려 드려요."}"></textarea>
+        <div class="row"><button class="btn primary big" data-s="reveal">정답 보기<kbd>Ctrl+Enter</kbd></button>
+          ${lv < 2 ? `<button class="btn" data-s="hint">${lv ? "힌트 더 보기" : "힌트 보기"}<kbd>H</kbd></button>` : ""}</div>`;
       return html;
     }
     const cov = coverage(item, session.typed);
-    const suggest = cov ? (cov.pct >= 80 ? "good" : cov.pct >= 40 ? "hard" : "again") : null;
+    let suggest = cov ? (cov.pct >= 80 ? "good" : cov.pct >= 40 ? "hard" : "again") : null;
+    // 힌트 2단계까지 보고 맞혔다면 '완벽' 대신 '애매'를 권한다
+    if (suggest === "good" && hintLevel() >= 2) suggest = "hard";
     if (session.typed.trim()) html += `<div><div class="answer-label">내 답안</div><div class="mine">${esc(session.typed)}</div></div>`;
     html += coverageHTML(cov);
     html += `<div class="answer"><div class="answer-label">정답</div>${answerHTML(item, cov ? "check" : "show", session.typed)}</div>`;
@@ -649,6 +671,7 @@
     session.idx++;
     session.revealed = false;
     session.typed = "";
+    session.hint = 0;
     session.blankResult = "";
     session.seqState = null;
     renderStudy();
@@ -685,7 +708,7 @@
       <div><h2>암기 학습</h2><p class="muted small" style="margin:0">방식과 범위를 고르고 시작하세요. 자가 채점 결과에 따라 복습 시기가 정해집니다.</p></div>
       <div class="field"><span class="label">학습 방식</span><div class="mode-grid">
         ${modeBtn("flash", "암기 카드", "문제를 보고 답을 쓴 뒤 정답과 핵심어를 대조")}
-        ${modeBtn("cover", "가리고 외우기", "핵심어가 흐리게 가려지고 누르면 보임")}
+        ${modeBtn("hint", "힌트 보고 쓰기", "초성·공식 틀 힌트를 보며 답안 작성")}
         ${modeBtn("blank", "빈칸 채우기", "정답 속 핵심어가 빈칸으로 나옴")}
         ${modeBtn("seq", "순서 맞추기", "과정·단계를 순서대로 배열 (7문항)")}
       </div></div>
@@ -746,6 +769,13 @@
     const act = s.dataset.s;
     if (act === "start") startStudy({});
     if (act === "reveal") { session.typed = ($("#typed") || { value: "" }).value; session.revealed = true; renderStudy(); }
+    if (act === "hint") {
+      session.typed = ($("#typed") || { value: "" }).value;
+      session.hint = hintLevel() + 1;
+      renderStudy();
+      const ta = $("#typed");
+      if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    }
     if (act === "check") checkBlanks(false);
     if (act === "giveup") checkBlanks(true);
     if (act === "quit") { session = Object.keys(session.results).length ? Object.assign(session, { idx: session.queue.length }) : null; renderStudy(); }
@@ -770,11 +800,10 @@
       reveal.click();
       return;
     }
-    const nextCover = $("#qcard .cover:not(.open)");
-    if (nextCover && !inText && e.key === " ") {
-      // Space: 가려진 핵심어를 앞에서부터 하나씩 연다
+    const hintBtn = $('[data-s="hint"]');
+    if (hintBtn && !inText && (e.key === "h" || e.key === "H")) {
       e.preventDefault();
-      nextCover.click();
+      hintBtn.click();
       return;
     }
     if (check && e.key === "Enter") {
@@ -957,7 +986,7 @@
   });
 
   // ---------- 문제집 ----------
-  const listState = { q: "", cat: "", flag: "", open: null, cover: false };
+  const listState = { q: "", cat: "", flag: "", open: null };
 
   function renderList() {
     const fchip = (val, label) => `<button class="chip ${listState.flag === val ? "on" : ""}" data-flag="${val}">${label}</button>`;
@@ -970,8 +999,6 @@
         </div>
         <div class="row">${fchip("", "모두")}${fchip("calc", "계산")}${fchip("star", "★ 별표")}${fchip("wrong", "오답")}${fchip("new", "미학습")}${fchip("master", "암기 완료")}
           <span class="small muted" id="list-count"></span></div>
-        <div class="row"><button class="chip ${listState.cover ? "on" : ""}" data-lcover="1" aria-pressed="${listState.cover}">핵심어 가리기 ${listState.cover ? "켜짐" : "꺼짐"}</button>
-          <span class="small muted">켜면 정답의 핵심어가 흐리게 가려져요</span></div>
       </div>
       <div class="qlist" id="qlist"></div>`;
     renderListItems();
@@ -1015,15 +1042,12 @@
     let html = "";
     if (item.given) html += `<ul class="given">${item.given.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>`;
     if (item.table) html += tableHTML(item.table);
-    html += listState.cover
-      ? `<div class="answer cover-scope"><div class="row" style="justify-content:space-between"><div class="answer-label">정답 · 흐린 칸을 눌러 확인</div><div class="row cover-bar"></div></div>${answerHTML(item, "cover")}</div>`
-      : `<div class="answer"><div class="answer-label">정답</div>${answerHTML(item, "show")}</div>`;
+    html += `<div class="answer"><div class="answer-label">정답</div>${answerHTML(item, "show")}</div>`;
     html += similarHTML(item);
     html += `<div class="row"><button class="btn small" data-lstar="${item.id}">${isStarred(item.id) ? "★ 별표 해제" : "☆ 별표"}</button>
       <button class="btn small" data-lstudy="${item.id}">이 문제 암기 카드로</button></div>`;
     body.innerHTML = html;
     body.dataset.filled = "1";
-    refreshCoverBars();
   }
 
   $("#view-list").addEventListener("toggle", (e) => {
@@ -1036,7 +1060,6 @@
     const t = e.target;
     const lc = t.closest("[data-lcat]");
     if (lc) { listState.cat = lc.dataset.lcat; renderList(); return; }
-    if (t.closest("[data-lcover]")) { listState.cover = !listState.cover; renderList(); return; }
     const f = t.closest("[data-flag]");
     if (f) { listState.flag = f.dataset.flag; renderList(); return; }
     const ls = t.closest("[data-lstar]");
@@ -1059,26 +1082,6 @@
       session = { mode: "flash", queue: [id], idx: 0, total: 1, results: {}, requeued: {}, revealed: false, typed: "" };
       go("study");
     }
-  });
-
-  // 가려진 핵심어: 누르면 보이고 다시 누르면 가려진다 (암기 학습·문제집 공통)
-  document.addEventListener("click", (e) => {
-    const c = e.target.closest(".cover");
-    const all = e.target.closest("[data-cover-all]");
-    if (!c && !all) return;
-    e.preventDefault();
-    if (c) {
-      const open = !c.classList.contains("open");
-      c.classList.toggle("open", open);
-      c.setAttribute("aria-pressed", String(open));
-    } else {
-      const open = all.dataset.coverAll === "open";
-      $all(".cover", all.closest(".cover-scope")).forEach((b) => {
-        b.classList.toggle("open", open);
-        b.setAttribute("aria-pressed", String(open));
-      });
-    }
-    refreshCoverBars();
   });
 
   // 문제집 필터가 고정 헤더 바로 아래에 붙도록 헤더 높이를 CSS 변수로 넘긴다
