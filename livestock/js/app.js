@@ -875,7 +875,7 @@
         ${modeBtn("flash", "암기 카드", "문제를 보고 답을 쓴 뒤 정답과 핵심어를 대조")}
         ${modeBtn("hint", "힌트 보고 쓰기", "초성·공식 틀 힌트를 보며 답안 작성")}
         ${modeBtn("blank", "빈칸 채우기", "정답 속 핵심어가 빈칸으로 나옴")}
-        ${modeBtn("seq", "순서 맞추기", "과정·단계를 순서대로 배열 (7문항)")}
+        ${modeBtn("seq", "순서 맞추기", `과정·단계를 순서대로 배열 (${QUESTIONS.filter((q) => q.seq).length}문항)`)}
       </div></div>
       <div class="field"><span class="label">문제 범위</span><div class="row">
         ${chip("source", "today", "오늘의 복습+새 문제")}${chip("source", "all", "전체")}${chip("source", "new", "안 본 문제")}${chip("source", "wrong", "못 외운 문제")}${chip("source", "star", "별표")}
