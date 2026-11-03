@@ -319,6 +319,7 @@
     const lines = [];
     let steps = 0;
     item.a.forEach((l) => {
+      if (/^@/.test(l)) return; // '@ 참고' 같은 덧붙임 설명은 힌트에서 뺀다
       const h = calcHintLine(l);
       if (h === "step") steps++;
       else if (h && !lines.includes(h)) lines.push(h);
