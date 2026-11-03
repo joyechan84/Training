@@ -365,6 +365,7 @@
     opts = opts || {};
     const tags = [`<span class="cat-tag" style="--cat:${CAT_COLOR[item.cat]}">${esc(item.cat)}</span>`];
     if (item.calc) tags.push('<span class="badge calc">계산</span>');
+    if (item.src) tags.push(`<span class="badge src">${esc(item.src.replace(/^20(\d\d)년 /, "$1년 "))}</span>`);
     const star = opts.noStar ? "" : `<button class="star ${isStarred(item.id) ? "on" : ""}" data-star="${item.id}" aria-label="별표">★</button>`;
     let html = `<div class="qhead"><span class="qno">문 ${item.id}</span>${tags.join("")}${star}</div>`;
     html += `<p class="qtext">${esc(item.q)}</p>`;
@@ -678,6 +679,7 @@
     if (cfg.calcOnly) items = items.filter((q) => q.calc);
     if (cfg.mode === "seq") items = items.filter((q) => q.seq);
     if (cfg.source === "star") items = items.filter((q) => isStarred(q.id));
+    if (cfg.source === "recall") items = items.filter((q) => q.src);
     if (cfg.source === "wrong") items = items.filter((q) => isWrong(q.id));
     if (cfg.source === "new") items = items.filter((q) => status(q.id) === "new");
     let ids = items.map((q) => q.id);
@@ -879,7 +881,7 @@
         ${modeBtn("seq", "순서 맞추기", `과정·단계를 순서대로 배열 (${QUESTIONS.filter((q) => q.seq).length}문항)`)}
       </div></div>
       <div class="field"><span class="label">문제 범위</span><div class="row">
-        ${chip("source", "today", "오늘의 복습+새 문제")}${chip("source", "all", "전체")}${chip("source", "new", "안 본 문제")}${chip("source", "wrong", "못 외운 문제")}${chip("source", "star", "별표")}
+        ${chip("source", "today", "오늘의 복습+새 문제")}${chip("source", "all", "전체")}${chip("source", "new", "안 본 문제")}${chip("source", "wrong", "못 외운 문제")}${chip("source", "star", "별표")}${chip("source", "recall", "올해 복기 문제")}
       </div></div>
       <div class="field"><span class="label">분야 (선택 안 하면 전체)</span><div class="row">
         ${CATS.map((c) => `<button class="chip ${setup.cats.includes(c) ? "on" : ""}" data-cat="${c}">${c}</button>`).join("")}
@@ -987,7 +989,7 @@
   });
 
   // ---------- 모의고사 ----------
-  const examSetup = { n: 20, cats: [] };
+  const examSetup = { n: 20, cats: [], recall: false };
   let examTick = null;
 
   function renderExam() {
@@ -1004,7 +1006,8 @@
       <div><h2>모의고사</h2><p class="muted small" style="margin:0">실제 필답형처럼 답을 직접 써 내려간 뒤 제출하면, 정답과 비교해 문항마다 맞음·부분·틀림을 매깁니다. 핵심어 일치율로 채점을 미리 제안해 드려요.</p></div>
       <div class="field"><span class="label">문항 수</span><div class="row">${chipN(10)}${chipN(20)}${chipN(30)}</div></div>
       <div class="field"><span class="label">분야 (선택 안 하면 전체)</span><div class="row">
-        ${CATS.map((c) => `<button class="chip ${examSetup.cats.includes(c) ? "on" : ""}" data-ecat="${c}">${c}</button>`).join("")}</div></div>
+        ${CATS.map((c) => `<button class="chip ${examSetup.cats.includes(c) ? "on" : ""}" data-ecat="${c}">${c}</button>`).join("")}
+        <button class="chip ${examSetup.recall ? "on" : ""}" data-erecall="1">올해 복기 문제만</button></div></div>
       <div class="row"><button class="btn primary big" data-e="start">시험 시작</button></div>
     </div>`;
   }
@@ -1082,6 +1085,7 @@
     const d = store.examDraft;
     const n = t.closest("[data-n]");
     if (n) { examSetup.n = +n.dataset.n; renderExamSetup(); return; }
+    if (t.closest("[data-erecall]")) { examSetup.recall = !examSetup.recall; renderExamSetup(); return; }
     const ec = t.closest("[data-ecat]");
     if (ec) {
       const c = ec.dataset.ecat;
@@ -1110,6 +1114,7 @@
     if (act === "start") {
       let items = QUESTIONS.slice();
       if (examSetup.cats.length) items = items.filter((q) => examSetup.cats.includes(q.cat));
+      if (examSetup.recall) items = items.filter((q) => q.src);
       const ids = shuffle(items.map((q) => q.id)).slice(0, examSetup.n).sort((a, b) => a - b);
       store.examDraft = { phase: "write", ids, answers: ids.map(() => ""), grades: ids.map(() => null), cur: 0, start: Date.now() };
       saveStore();
@@ -1165,7 +1170,7 @@
           <button class="chip ${listState.cat === "" ? "on" : ""}" data-lcat="">전체</button>
           ${CATS.map((c) => `<button class="chip ${listState.cat === c ? "on" : ""}" data-lcat="${c}">${c}</button>`).join("")}
         </div>
-        <div class="row">${fchip("", "모두")}${fchip("calc", "계산")}${fchip("star", "★ 별표")}${fchip("wrong", "못 외운")}${fchip("new", "미학습")}${fchip("master", "암기 완료")}
+        <div class="row">${fchip("", "모두")}${fchip("calc", "계산")}${fchip("recall", "올해 복기")}${fchip("star", "★ 별표")}${fchip("wrong", "못 외운")}${fchip("new", "미학습")}${fchip("master", "암기 완료")}
           <span class="small muted" id="list-count"></span></div>
       </div>
       <div class="qlist" id="qlist"></div>`;
@@ -1182,6 +1187,7 @@
     const items = QUESTIONS.filter((it) => {
       if (listState.cat && it.cat !== listState.cat) return false;
       if (listState.flag === "calc" && !it.calc) return false;
+      if (listState.flag === "recall" && !it.src) return false;
       if (listState.flag === "star" && !isStarred(it.id)) return false;
       if (listState.flag === "wrong" && !isWrong(it.id)) return false;
       if (listState.flag === "new" && status(it.id) !== "new") return false;
@@ -1196,7 +1202,7 @@
         const dot = isWrong(it.id) ? "ng" : c && c.seen ? "l" + c.box : "";
         return `<details class="qitem" id="qi-${it.id}" data-id="${it.id}">
           <summary><span class="qi-no">${it.id}</span>
-            <span class="qi-text">${esc(it.q)}<span class="qi-meta"><span class="cat-tag" style="--cat:${CAT_COLOR[it.cat]}">${it.cat}</span>${it.calc ? '<span class="badge calc">계산</span>' : ""}${isStarred(it.id) ? '<span class="badge">★</span>' : ""}</span></span>
+            <span class="qi-text">${esc(it.q)}<span class="qi-meta"><span class="cat-tag" style="--cat:${CAT_COLOR[it.cat]}">${it.cat}</span>${it.calc ? '<span class="badge calc">계산</span>' : ""}${it.src ? `<span class="badge src">${esc(it.src.replace(/^20(\d\d)년 /, "$1년 "))}</span>` : ""}${isStarred(it.id) ? '<span class="badge">★</span>' : ""}</span></span>
             <span class="dot ${dot}" title="${{ new: "미학습", learn: "학습 중", master: "암기 완료" }[status(it.id)]}"></span></summary>
           <div class="qi-body"></div></details>`;
       }).join("")

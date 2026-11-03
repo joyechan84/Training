@@ -122,6 +122,7 @@ main.wrap { padding-block: 20px 72px; }
 .cat-tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cat, var(--muted)); }
 .badge { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); }
 .badge.calc { background: var(--warn-soft); color: var(--warn); }
+.badge.src { background: var(--bad-soft); color: var(--bad); }
 
 input[type="search"], input[type="text"], textarea, select {
   width: 100%; border: 1px solid var(--line); background: var(--card); border-radius: 8px; padding: 10px 12px;
