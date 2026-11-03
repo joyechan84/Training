@@ -152,6 +152,7 @@ textarea { min-height: 120px; resize: vertical; line-height: 1.6; }
 .action:hover { border-color: var(--accent); }
 .action b { font-size: 16px; }
 .action span { font-size: 13px; color: var(--muted); }
+.actions .action:last-child:nth-child(even) { grid-column: 1 / -1; }
 .action.main { grid-column: 1 / -1; }
 .action.main { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .action.main span { color: var(--on-accent); opacity: .85; }

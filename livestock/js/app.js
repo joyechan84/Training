@@ -86,6 +86,11 @@
     if (!c || !c.seen) return false;
     return (c.last || (c.box === 0 && c.ng > 0 ? "again" : "")) === "again";
   }
+  // 애매한 문제: 마지막 평가가 '애매'(모의고사의 '부분' 포함)인 문제
+  function isHard(id) {
+    const c = peekCard(id);
+    return !!c && c.seen > 0 && c.last === "hard";
+  }
 
   // ---------- 유틸 ----------
   function shuffle(arr) {
@@ -582,6 +587,7 @@
     const fresh = ids.length - master - learn;
     const due = ids.filter(isDue).length;
     const wrong = ids.filter(isWrong).length;
+    const hardN = ids.filter(isHard).length;
     const pct = Math.round((master / ids.length) * 100);
     const C = 2 * Math.PI * 44;
 
@@ -626,6 +632,7 @@
           <button class="action" data-act="hint"><b>힌트 보고 써 보기</b><span>초성·공식 힌트를 보며 답안을 직접 작성</span></button>
           <button class="action" data-act="blank"><b>빈칸 채우기</b><span>정답 속 핵심어를 직접 써서 확인</span></button>
           <button class="action" data-act="exam"><b>모의고사</b><span>20문항 서술 후 자가 채점</span></button>
+          <button class="action" data-act="hard" ${hardN ? "" : "disabled"}><b>애매한 문제 모아 보기</b><span>${hardN ? `'애매'로 표시한 ${hardN}문제` : "아직 애매한 문제가 없어요"}</span></button>
           <button class="action" data-act="wrong" ${wrong ? "" : "disabled"}><b>못 외운 문제 모아 보기</b><span>${wrong ? `'모름'으로 표시한 ${wrong}문제` : "아직 못 외운 문제가 없어요"}</span></button>
         </div>
 
@@ -656,6 +663,7 @@
     if (act === "blank") { setup.mode = "blank"; go("study"); }
     if (act === "hint") { setup.mode = "hint"; go("study"); }
     if (act === "exam") go("exam");
+    if (act === "hard") startStudy({ source: "hard", mode: "flash", count: 0, order: "random", cats: [], calcOnly: false });
     if (act === "wrong") startStudy({ source: "wrong", mode: "flash", count: 0, order: "random", cats: [], calcOnly: false });
     if (act === "reset") {
       if (resetArmed) {
@@ -681,6 +689,7 @@
     if (cfg.source === "star") items = items.filter((q) => isStarred(q.id));
     if (cfg.source === "recall") items = items.filter((q) => q.src);
     if (cfg.source === "wrong") items = items.filter((q) => isWrong(q.id));
+    if (cfg.source === "hard") items = items.filter((q) => isHard(q.id));
     if (cfg.source === "new") items = items.filter((q) => status(q.id) === "new");
     let ids = items.map((q) => q.id);
     if (cfg.source === "today") {
@@ -849,6 +858,8 @@
     const again = vals.filter((v) => v === "again").length;
     const missed = Object.keys(session.results).filter((id) => session.results[id] === "again").map(Number);
     const allMissed = QUESTIONS.filter((q) => isWrong(q.id)).length;
+    const unsure = Object.keys(session.results).filter((id) => session.results[id] === "hard").map(Number);
+    const allHard = QUESTIONS.filter((q) => isHard(q.id)).length;
     $("#view-study").innerHTML = `<div class="card done-card stack">
       <h2>이번 학습 끝!</h2>
       <p class="muted" style="margin:0">${session.total}문항</p>
@@ -859,13 +870,16 @@
       </div>
       <div class="row" style="justify-content:center">
         ${missed.length ? `<button class="btn primary" data-s="retry">이번에 못 외운 ${missed.length}문제 다시</button>` : ""}
+        ${unsure.length ? `<button class="btn" data-s="retry-hard">이번에 애매했던 ${unsure.length}문제 다시</button>` : ""}
         ${allMissed ? `<button class="btn" data-s="missed">못 외운 문제 전체 ${allMissed}개</button>` : ""}
+        ${allHard ? `<button class="btn" data-s="hard-all">애매한 문제 전체 ${allHard}개</button>` : ""}
         <button class="btn" data-s="setup">다른 범위 학습</button>
         <a class="btn" href="#home" style="text-decoration:none">홈으로</a>
       </div>
-      ${again ? '<p class="small muted" style="margin:0">\'모름\'으로 표시한 문제는 홈의 \'못 외운 문제 모아 보기\'와 문제집의 \'못 외운\' 필터에 모여 있어요.</p>' : ""}
+      ${again || hard ? '<p class="small muted" style="margin:0">\'모름\'과 \'애매\'로 표시한 문제는 홈의 모아 보기 버튼과 문제집의 \'못 외운\'·\'애매\' 필터에 따로 모여 있어요.</p>' : ""}
       </div>`;
     session.retryIds = missed;
+    session.retryHardIds = unsure;
   }
 
   function renderSetup() {
@@ -881,7 +895,7 @@
         ${modeBtn("seq", "순서 맞추기", `과정·단계를 순서대로 배열 (${QUESTIONS.filter((q) => q.seq).length}문항)`)}
       </div></div>
       <div class="field"><span class="label">문제 범위</span><div class="row">
-        ${chip("source", "today", "오늘의 복습+새 문제")}${chip("source", "all", "전체")}${chip("source", "new", "안 본 문제")}${chip("source", "wrong", "못 외운 문제")}${chip("source", "star", "별표")}${chip("source", "recall", "올해 복기 문제")}
+        ${chip("source", "today", "오늘의 복습+새 문제")}${chip("source", "all", "전체")}${chip("source", "new", "안 본 문제")}${chip("source", "wrong", "못 외운 문제")}${chip("source", "hard", "애매한 문제")}${chip("source", "star", "별표")}${chip("source", "recall", "올해 복기 문제")}
       </div></div>
       <div class="field"><span class="label">분야 (선택 안 하면 전체)</span><div class="row">
         ${CATS.map((c) => `<button class="chip ${setup.cats.includes(c) ? "on" : ""}" data-cat="${c}">${c}</button>`).join("")}
@@ -954,6 +968,12 @@
       renderStudy();
     }
     if (act === "missed") startStudy({ source: "wrong", count: 0, cats: [], calcOnly: false });
+    if (act === "hard-all") startStudy({ source: "hard", count: 0, cats: [], calcOnly: false });
+    if (act === "retry-hard") {
+      const ids = shuffle(session.retryHardIds);
+      session = { mode: session.mode, queue: ids, idx: 0, total: ids.length, results: {}, requeued: {}, revealed: false, typed: "" };
+      renderStudy();
+    }
   });
   $("#view-study").addEventListener("input", (e) => {
     if (e.target.id === "typed" && session) session.typed = e.target.value;
@@ -1170,7 +1190,7 @@
           <button class="chip ${listState.cat === "" ? "on" : ""}" data-lcat="">전체</button>
           ${CATS.map((c) => `<button class="chip ${listState.cat === c ? "on" : ""}" data-lcat="${c}">${c}</button>`).join("")}
         </div>
-        <div class="row">${fchip("", "모두")}${fchip("calc", "계산")}${fchip("recall", "올해 복기")}${fchip("star", "★ 별표")}${fchip("wrong", "못 외운")}${fchip("new", "미학습")}${fchip("master", "암기 완료")}
+        <div class="row">${fchip("", "모두")}${fchip("calc", "계산")}${fchip("recall", "올해 복기")}${fchip("star", "★ 별표")}${fchip("wrong", "못 외운")}${fchip("hard", "애매")}${fchip("new", "미학습")}${fchip("master", "암기 완료")}
           <span class="small muted" id="list-count"></span></div>
       </div>
       <div class="qlist" id="qlist"></div>`;
@@ -1190,6 +1210,7 @@
       if (listState.flag === "recall" && !it.src) return false;
       if (listState.flag === "star" && !isStarred(it.id)) return false;
       if (listState.flag === "wrong" && !isWrong(it.id)) return false;
+      if (listState.flag === "hard" && !isHard(it.id)) return false;
       if (listState.flag === "new" && status(it.id) !== "new") return false;
       if (listState.flag === "master" && status(it.id) !== "master") return false;
       if (q && !norm(it.id + " " + it.q + " " + it.a.join(" ")).includes(q)) return false;
