@@ -7,10 +7,10 @@
   // 상자(box) 번호별 다음 복습까지의 일수. 4상자 이상이면 '암기 완료'로 본다.
   const INTERVAL_DAYS = [0, 1, 2, 4, 7, 14];
   const MASTER_BOX = 4;
-  const CATS = ["번식", "영양·사료", "초지·조사료", "경영", "축산물", "육종·유전", "사양·시설"];
+  const CATS = ["번식", "영양·사료", "초지·조사료", "경영", "유가공", "육종·유전", "사양·시설"];
   const CAT_COLOR = {
     "번식": "#c0577a", "영양·사료": "#c98a12", "초지·조사료": "#3f8f4a", "경영": "#3a6fb0",
-    "축산물": "#b5533c", "육종·유전": "#7a5bb0", "사양·시설": "#4f8a8b",
+    "유가공": "#b5533c", "육종·유전": "#7a5bb0", "사양·시설": "#4f8a8b",
   };
   const BY_ID = new Map(QUESTIONS.map((q) => [q.id, q]));
   // 같은 문제를 하나로 합쳤을 때 없어진 번호 -> 남긴 번호
@@ -45,8 +45,9 @@
         changed = true;
       }
     });
-    if (store.stars.some((id) => ALIAS.has(id))) {
-      store.stars = Array.from(new Set(store.stars.map((id) => ALIAS.get(id) || id)));
+    if (store.stars.some((id) => !BY_ID.has(id))) {
+      // 합친 번호는 대표 번호로, 시험 범위에서 빠진 문제는 별표에서 지운다
+      store.stars = Array.from(new Set(store.stars.map((id) => ALIAS.get(id) || id))).filter((id) => BY_ID.has(id));
       changed = true;
     }
     const d = store.examDraft;
