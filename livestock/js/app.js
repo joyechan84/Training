@@ -13,6 +13,9 @@
     "축산물": "#b5533c", "육종·유전": "#7a5bb0", "사양·시설": "#4f8a8b",
   };
   const BY_ID = new Map(QUESTIONS.map((q) => [q.id, q]));
+  // 같은 문제를 하나로 합쳤을 때 없어진 번호 -> 남긴 번호
+  const ALIAS = new Map();
+  QUESTIONS.forEach((q) => (q.alias || []).forEach((a) => ALIAS.set(a, q.id)));
 
   // ---------- 저장소 (localStorage, 실패해도 앱은 동작) ----------
   function freshStore() {
@@ -28,6 +31,29 @@
     }
   }
   let store = loadStore();
+  migrateMerged();
+
+  // 합쳐진 번호에 남아 있던 학습 기록·별표·모의고사를 남긴 번호로 옮긴다
+  function migrateMerged() {
+    let changed = false;
+    ALIAS.forEach((keep, old) => {
+      const c = store.cards[old];
+      if (c) {
+        const k = store.cards[keep];
+        if (!k || (c.last && (!k.last || c.seen > k.seen))) store.cards[keep] = c;
+        delete store.cards[old];
+        changed = true;
+      }
+    });
+    if (store.stars.some((id) => ALIAS.has(id))) {
+      store.stars = Array.from(new Set(store.stars.map((id) => ALIAS.get(id) || id)));
+      changed = true;
+    }
+    const d = store.examDraft;
+    if (d && d.ids.some((id) => !BY_ID.has(ALIAS.get(id) || id))) { store.examDraft = null; changed = true; }
+    else if (d && d.ids.some((id) => ALIAS.has(id))) { d.ids = d.ids.map((id) => ALIAS.get(id) || id); changed = true; }
+    if (changed) saveStore();
+  }
   function saveStore() {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify(store));
@@ -374,6 +400,7 @@
     const star = opts.noStar ? "" : `<button class="star ${isStarred(item.id) ? "on" : ""}" data-star="${item.id}" aria-label="별표">★</button>`;
     let html = `<div class="qhead"><span class="qno">문 ${item.id}</span>${tags.join("")}${star}</div>`;
     html += `<p class="qtext">${esc(item.q)}</p>`;
+    if (item.alias) html += `<p class="small muted" style="margin:-6px 0 0">같은 문제로 합친 번호: ${item.alias.join(", ")}번</p>`;
     if (item.given) html += `<ul class="given">${item.given.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>`;
     if (item.table) html += tableHTML(item.table);
     return html;
@@ -1213,7 +1240,7 @@
       if (listState.flag === "hard" && !isHard(it.id)) return false;
       if (listState.flag === "new" && status(it.id) !== "new") return false;
       if (listState.flag === "master" && status(it.id) !== "master") return false;
-      if (q && !norm(it.id + " " + it.q + " " + it.a.join(" ")).includes(q)) return false;
+      if (q && !norm(it.id + " " + (it.alias || []).join(" ") + " " + it.q + " " + it.a.join(" ")).includes(q)) return false;
       return true;
     });
     $("#list-count").textContent = `${items.length}문항`;
@@ -1235,6 +1262,7 @@
     if (body.dataset.filled) return;
     const item = BY_ID.get(+det.dataset.id);
     let html = "";
+    if (item.alias) html += `<p class="small muted" style="margin:0">같은 문제로 합친 번호: ${item.alias.join(", ")}번</p>`;
     if (item.given) html += `<ul class="given">${item.given.map((g) => `<li>${esc(g)}</li>`).join("")}</ul>`;
     if (item.table) html += tableHTML(item.table);
     html += `<div class="answer"><div class="answer-label">정답</div>${answerHTML(item, "show")}</div>`;
