@@ -31,7 +31,6 @@
     }
   }
   let store = loadStore();
-  migrateMerged();
 
   // 합쳐진 번호에 남아 있던 학습 기록·별표·모의고사를 남긴 번호로 옮긴다
   function migrateMerged() {
@@ -56,9 +55,124 @@
     if (changed) saveStore();
   }
   function saveStore() {
+    store.updatedAt = Date.now();
+    saveLocal();
+    queueRemoteSave();
+  }
+  function saveLocal() {
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify(store));
     } catch (e) { /* 저장 불가 환경: 이번 세션 동안만 유지 */ }
+  }
+
+  // ---------- 계정 동기화 (claude.ai 로그인 계정별 저장) ----------
+  // 로그인한 사람은 기록이 계정에 저장되어 어느 기기에서 열어도 이어진다.
+  // 로그인하지 않았거나 파일로 열면 이 기기의 브라우저에만 저장된다.
+  const sync = { doc: null, state: "local", writing: false, again: false, timer: null };
+
+  // 두 기록을 합친다: 문제마다 더 최근에 채점한 쪽, 별표·진행 중 시험은 더 최근에 바꾼 쪽
+  function mergeStores(a, b) {
+    const resetAt = Math.max(a.resetAt || 0, b.resetAt || 0);
+    const newer = (b.updatedAt || 0) > (a.updatedAt || 0) ? b : a;
+    // 동기화 전 기기에만 있던 별표(수정 시각 없음)는 합쳐서 잃지 않게 한다
+    const stars = !a.updatedAt || !b.updatedAt
+      ? Array.from(new Set([...(a.stars || []), ...(b.stars || [])]))
+      : (newer.stars || []).slice();
+    const cards = {};
+    [a, b].forEach((st) => Object.entries(st.cards || {}).forEach(([id, c]) => {
+      if ((c.t || 0) < resetAt) return;
+      const cur = cards[id];
+      if (!cur || (c.t || 0) > (cur.t || 0) || ((c.t || 0) === (cur.t || 0) && c.seen > cur.seen)) cards[id] = c;
+    }));
+    const seen = new Set();
+    const exams = [];
+    [a, b].forEach((st) => (st.exams || []).forEach((e) => {
+      if ((e.at || 0) < resetAt) return;
+      const key = [e.at, e.date, e.score, e.n, e.minutes].join("|");
+      if (!seen.has(key)) { seen.add(key); exams.push(e); }
+    }));
+    exams.sort((x, y) => (x.at || 0) - (y.at || 0));
+    return {
+      cards, exams,
+      stars,
+      examDraft: newer.examDraft || null,
+      updatedAt: Math.max(a.updatedAt || 0, b.updatedAt || 0),
+      resetAt,
+    };
+  }
+
+  function queueRemoteSave() {
+    if (!sync.doc) return;
+    clearTimeout(sync.timer);
+    sync.timer = setTimeout(writeRemote, 1500);
+  }
+  // 한 번에 한 번만 쓴다. 쓰는 동안 바뀐 것은 끝난 뒤 한 번 더 쓴다.
+  async function writeRemote() {
+    if (!sync.doc) return;
+    if (sync.writing) { sync.again = true; return; }
+    sync.writing = true;
+    try {
+      await sync.doc.set(JSON.parse(JSON.stringify(store)));
+      setSyncState("synced");
+    } catch (e) {
+      setSyncState(e && e.code === "quota_exceeded" ? "full" : "error");
+    }
+    sync.writing = false;
+    if (sync.again) { sync.again = false; writeRemote(); }
+  }
+  function setSyncState(st) {
+    sync.state = st;
+    const el = $("#sync-note");
+    if (el) el.innerHTML = syncNoteHTML();
+  }
+  function syncNoteHTML() {
+    return {
+      local: "학습 기록은 이 기기의 브라우저에만 저장됩니다. claude.ai에 로그인한 상태로 이 링크를 열면 계정에 저장되어 어느 기기에서든 이어집니다.",
+      connecting: "계정 기록을 불러오는 중…",
+      synced: "☁ claude.ai 계정에 저장됨 · 같은 계정으로 열면 어느 기기에서든 이어집니다.",
+      error: "계정 저장에 실패했어요. 이 기기에는 저장되어 있고, 다음 채점 때 다시 시도합니다.",
+      full: "계정 저장 공간이 가득 찼어요. 이 기기에는 저장되어 있습니다.",
+    }[sync.state];
+  }
+  function applyRemote(data) {
+    const merged = mergeStores(store, Object.assign(freshStore(), data));
+    const changed = JSON.stringify(merged) !== JSON.stringify(store);
+    store = Object.assign(freshStore(), merged);
+    migrateMerged();
+    saveLocal();
+    return changed;
+  }
+  async function startSync() {
+    const use = window.claude && window.claude.use;
+    if (!use) return;
+    try {
+      const [db, user] = await Promise.all([use("db"), use("user")]);
+      const uid = db && user ? await user.id() : null;
+      if (!uid) return;
+      sync.doc = db.doc("data/users/" + uid + "/progress");
+      setSyncState("connecting");
+      const snap = await sync.doc.get();
+      const remoteHad = snap.exists;
+      if (remoteHad) applyRemote(snap.data());
+      // 합친 결과가 계정 기록과 다르면(이 기기에만 있던 기록 포함) 계정에 올린다
+      if (!remoteHad || JSON.stringify(snap.data()) !== JSON.stringify(store)) await writeRemote();
+      else setSyncState("synced");
+      refreshQuietViews();
+      // 다른 기기에서 채점하면 이 화면에도 반영한다
+      sync.doc.onSnapshot((s) => {
+        if (!s.exists || s.metadata.hasPendingWrites || sync.writing) return;
+        if (applyRemote(s.data())) refreshQuietViews();
+      }, () => setSyncState("error"));
+    } catch (e) {
+      sync.doc = null;
+      setSyncState("local");
+    }
+  }
+  // 학습·시험 도중에는 화면을 바꾸지 않고, 홈과 문제집만 새로 그린다
+  function refreshQuietViews() {
+    const v = currentView();
+    if (v === "home") renderHome();
+    if (v === "list") renderListItems();
   }
 
   function card(id) {
@@ -81,6 +195,7 @@
   function gradeCard(id, g) {
     const c = card(id);
     c.seen++;
+    c.t = Date.now();
     c.last = g;
     if (g === "good") {
       c.box = Math.min(5, c.box + 1);
@@ -676,7 +791,7 @@
         </div>
 
         <div class="row small muted" id="reset-row">
-          <span>학습 기록은 이 기기의 브라우저에 저장됩니다.</span>
+          <span id="sync-note">${syncNoteHTML()}</span>
           <button class="btn ghost small" data-act="reset">${resetArmed ? "정말 초기화" : "기록 초기화"}</button>
           ${resetArmed ? '<button class="btn ghost small" data-act="reset-cancel">취소</button>' : ""}
         </div>
@@ -695,7 +810,7 @@
     if (act === "wrong") startStudy({ source: "wrong", mode: "flash", count: 0, order: "random", cats: [], calcOnly: false });
     if (act === "reset") {
       if (resetArmed) {
-        store = freshStore();
+        store = Object.assign(freshStore(), { resetAt: Date.now() });
         saveStore();
         resetArmed = false;
         toast("학습 기록을 초기화했어요");
@@ -1190,7 +1305,7 @@
       d.ids.forEach((id, i) => gradeCard(id, d.grades[i]));
       const score = examScore(d);
       const now = new Date();
-      store.exams.push({ date: `${now.getMonth() + 1}/${now.getDate()}`, score, n: d.ids.length, minutes: d.minutes });
+      store.exams.push({ at: Date.now(), date: `${now.getMonth() + 1}/${now.getDate()}`, score, n: d.ids.length, minutes: d.minutes });
       store.examDraft = null;
       saveStore();
       toast(`${score}점 저장 · ${score >= 60 ? "합격선 통과!" : "60점 합격선까지 조금 더"}`);
@@ -1316,5 +1431,7 @@
   syncHeaderHeight();
 
   window.addEventListener("hashchange", route);
+  migrateMerged();
+  startSync();
   route();
 })();
