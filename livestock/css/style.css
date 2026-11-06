@@ -41,7 +41,7 @@
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
 body {
   margin: 0;
   background: var(--paper);
@@ -55,6 +55,8 @@ body::before {
   z-index: 10; background: var(--card);
 }
 button, input, textarea, select { font: inherit; color: inherit; }
+/* 휴대폰: 두 번 탭 확대를 막아 빠르게 연달아 눌러도 탭이 버려지지 않게 한다 */
+button, a, input, textarea, summary { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.3; }
@@ -230,6 +232,13 @@ mark.k.miss { box-shadow: inset 0 -2px 0 var(--bad); }
 .grade .btn.bad.sel { background: var(--bad); border-color: var(--bad); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--bad); }
 .grade .btn.warn.sel { background: var(--warn); border-color: var(--warn); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--warn); }
 .grade .btn.good.sel { background: var(--good); border-color: var(--good); box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--good); }
+.grade .btn:active { transform: scale(0.97); }
+/* 암기 학습: 채점 버튼을 화면 아래에 붙여 두어, 긴 정답도 스크롤을 끝까지 내리지 않고 바로 누를 수 있게 한다 */
+#qcard .grade {
+  position: sticky; bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); z-index: 4;
+  background: var(--card); padding: 8px; margin-inline: -8px; border-radius: 12px;
+  box-shadow: 0 -6px 16px -8px rgba(0, 0, 0, 0.25);
+}
 .grade small { display: block; font-weight: 400; font-size: 11px; opacity: .8; margin-top: 2px; }
 
 .blank {
