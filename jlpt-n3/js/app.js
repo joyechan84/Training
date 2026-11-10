@@ -328,12 +328,13 @@
   }
 
   // ---------- 탭 / 라우팅 ----------
-  const VIEWS = ["plan", "kanji", "vocab", "grammar", "quiz", "wrong"];
+  const VIEWS = ["plan", "kana", "kanji", "vocab", "grammar", "quiz", "wrong"];
   function show(view) {
     if (!VIEWS.includes(view)) view = "plan";
     document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + view));
     document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
     if (view === "plan") renderPlan();
+    if (view === "kana") renderKana();
     if (view === "kanji") renderKanji();
     if (view === "vocab") renderVocab();
     if (view === "grammar") renderGrammar();
@@ -558,6 +559,68 @@
     show(location.hash.slice(1) || "plan");
   }
 
+  // ---------- 가나 표 ----------
+  const toKata = (s) => s.replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
+  function kanaCell(raw, mode) {
+    if (!raw) return '<div class="kana-cell empty"></div>';
+    const [h, ro, ko] = raw.split("|");
+    const isKata = /[\u30a0-\u30ff]/.test(h);
+    const hira = isKata ? "" : h;
+    const kata = isKata ? h : toKata(h);
+    const main = mode === "kata" ? kata : hira || kata;
+    const sub = mode === "both" && hira ? '<span class="kana-sub" lang="ja">' + esc(kata) + "</span>" : "";
+    const hide = $("kana-hide").checked;
+    return '<button type="button" class="kana-cell" data-say="' + esc(main) + '"><span class="kana-main" lang="ja">' + esc(main) + "</span>" + sub +
+      '<span class="kana-ro ' + (hide ? "reveal" : "") + '"><span>' + esc(ro) + " · " + esc(ko) + "</span></span></button>";
+  }
+  function kanaTable(title, rows, cols, mode, note) {
+    return '<section class="kana-block"><h3>' + title + "</h3>" + (note ? '<p class="hint">' + note + "</p>" : "") +
+      '<div class="kana-grid" style="grid-template-columns:repeat(' + cols + ',minmax(0,1fr))">' +
+      rows.map((r) => r.map((c) => kanaCell(c, mode)).join("")).join("") + "</div></section>";
+  }
+  function renderKana() {
+    const mode = getSeg("kana-mode");
+    let h = kanaTable("기본 오십음도 (청음)", KANA_DATA.basic, 5, mode, "ん은 뒤 글자에 따라 ㄴ·ㅁ·ㅇ 받침처럼 소리 나요.");
+    h += kanaTable("탁음 · 반탁음 ( ゛ ゜ )", KANA_DATA.dakuten, 5, mode, "점 두 개(゛)는 탁음(ㄱ·ㅈ·ㄷ·ㅂ), 동그라미(゜)는 반탁음(ㅍ). ぢ·づ는 거의 쓰지 않아요.");
+    h += kanaTable("요음 (작은 ゃ ゅ ょ)", KANA_DATA.youon, 3, mode, "い단 글자 + 작은 や·ゆ·よ = 한 박자로 읽어요. (き+ゃ = きゃ 캬)");
+    if (mode !== "hira") h += kanaTable("외래어 전용 가타카나", KANA_DATA.foreign, 4, "kata", "작은 ァィゥェォ를 붙여 외래어 소리를 표기해요. (ファン 팬, パーティー 파티)");
+    h += '<section class="kana-block"><h3>꼭 알아야 할 규칙</h3><table class="mini-table">' +
+      '<tr><td lang="ja">っ / ッ (촉음)</td><td>작은 つ는 다음 자음을 한 박자 끊어 읽기 → <span lang="ja">きって</span> 킷테 (우표)</td></tr>' +
+      '<tr><td lang="ja">ー (장음)</td><td>가타카나에서 앞 모음을 길게 → <span lang="ja">コーヒー</span> 코오히이 (커피)</td></tr>' +
+      '<tr><td lang="ja">おう・えい 등</td><td>히라가나 장음은 모음을 덧붙여 표기 → <span lang="ja">せんせい</span> 센세에, <span lang="ja">がっこう</span> 각코오</td></tr>' +
+      '<tr><td lang="ja">は・へ・を (조사)</td><td>조사로 쓰일 때 は=와, へ=에, を=오 로 읽어요 → <span lang="ja">わたしは</span> 와타시와</td></tr>' +
+      "</table></section>";
+    h += '<section class="kana-block"><h3>헷갈리기 쉬운 글자</h3><table class="mini-table">' +
+      KANA_DATA.confusing.map((r) => '<tr><td lang="ja" class="kana-conf">' + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td></tr>").join("") + "</table></section>";
+    $("kana-tables").innerHTML = h;
+  }
+  $("kana-mode").addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    setSeg("kana-mode", b.dataset.v);
+    renderKana();
+  });
+  $("kana-hide").addEventListener("change", renderKana);
+  $("kana-quiz-btn").addEventListener("click", () => {
+    setSeg("quiz-type", "kana");
+    go("quiz");
+    startQuiz({ type: "kana" });
+  });
+  function kanaPool() {
+    const mode = getSeg("kana-mode");
+    const out = [];
+    ["basic", "dakuten", "youon"].concat(mode === "hira" ? [] : ["foreign"]).forEach((sec) => {
+      KANA_DATA[sec].forEach((row) => row.forEach((raw) => {
+        if (!raw) return;
+        const [h, ro, ko] = raw.split("|");
+        const isKata = /[\u30a0-\u30ff]/.test(h);
+        const forms = isKata ? [h] : mode === "hira" ? [h] : mode === "kata" ? [toKata(h)] : [h, toKata(h)];
+        forms.forEach((ch) => out.push({ id: "kana:" + ch, ch, ro, ko, sec }));
+      }));
+    });
+    return out;
+  }
+
   // ---------- 한자 ----------
   function renderKanji() {
     const items = filterItems(KANJI, "kanji", (x) => [x.char, x.on, x.kun, x.mean].concat(x.ex.map((e) => e.w + e.r + e.m)));
@@ -672,6 +735,10 @@
   }
 
   function buildQuestions(type, range, day, count) {
+    if (type === "kana") {
+      const kp = kanaPool();
+      return shuffle(kp).slice(0, count).map((item) => makeQuestion({ item, t: "kana", pool: kp }));
+    }
     const pool = poolFor(range, day);
     let entries = [];
     if (type === "kanji") entries = pool.k.map((x) => ({ item: x, t: "kanji" }));
@@ -704,9 +771,16 @@
     return out;
   }
 
-  function makeQuestion({ item, t }) {
+  function makeQuestion({ item, t, pool }) {
     let prompt, answer, opts, explain, say, optLang = "";
-    if (t === "kanji") {
+    if (t === "kana") {
+      const label = (x) => x.ro + " (" + x.ko + ")";
+      prompt = '<div class="q-big" lang="ja">' + esc(item.ch) + '</div><div class="q-ask">이 글자의 발음은?</div>';
+      answer = label(item);
+      opts = distractors(pool || kanaPool(), item, label, 3, (x) => (x.sec === item.sec ? 1 : 0));
+      explain = '<b lang="ja">' + esc(item.ch) + "</b> = " + esc(label(item));
+      say = item.ch;
+    } else if (t === "kanji") {
       prompt = '<div class="q-big" lang="ja">' + esc(item.char) + '</div><div class="q-ask">이 한자의 뜻(훈음)은?</div>';
       answer = item.mean;
       opts = distractors(KANJI, item, (x) => x.mean, 3);
@@ -747,7 +821,7 @@
     return { item, t, prompt, answer, options, explain, say, optLang };
   }
 
-  const TYPE_LABEL = { kanji: "한자", reading: "읽기", meaning: "뜻", reverse: "단어", grammar: "문법" };
+  const TYPE_LABEL = { kana: "가나", kanji: "한자", reading: "읽기", meaning: "뜻", reverse: "단어", grammar: "문법" };
 
   function startQuiz(opts) {
     const type = opts.type || getSeg("quiz-type");
@@ -796,14 +870,13 @@
       quiz.score++;
       if (quiz.range === "wrong" && wrong[id]) { delete wrong[id]; saveWrong(); }
     } else {
-      wrong[id] = (wrong[id] || 0) + 1;
-      saveWrong();
+      if (q.t !== "kana") { wrong[id] = (wrong[id] || 0) + 1; saveWrong(); }
       quiz.wrongList.push(q);
     }
     const hint = document.querySelector(".q-hint");
     if (hint) hint.classList.add("shown");
     $("q-feedback").innerHTML =
-      '<div class="feedback ' + (ok ? "ok" : "ng") + '"><div class="fb-title">' + (ok ? "⭕ 정답!" : "❌ 오답 — 오답노트에 저장했어요") + speakBtn(q.say) + "</div>" +
+      '<div class="feedback ' + (ok ? "ok" : "ng") + '"><div class="fb-title">' + (ok ? "⭕ 정답!" : q.t === "kana" ? "❌ 오답" : "❌ 오답 — 오답노트에 저장했어요") + speakBtn(q.say) + "</div>" +
       '<div class="fb-body">' + q.explain + "</div></div>" +
       '<button type="button" class="primary-btn" id="q-next">' + (quiz.i + 1 < quiz.qs.length ? "다음 문제 ›" : "결과 보기") + "</button>";
     $("q-next").focus({ preventScroll: true });
@@ -820,11 +893,12 @@
   function renderResult() {
     const n = quiz.qs.length;
     const pct = Math.round((quiz.score / n) * 100);
-    if ((quiz.range === "today" || quiz.range === "upto") && pct >= 60) setTask(quiz.day, "q", true);
+    const countsForDay = (quiz.range === "today" || quiz.range === "upto") && quiz.type !== "kana";
+    if (countsForDay && pct >= 60) setTask(quiz.day, "q", true);
     const msg = pct === 100 ? "완벽해요! 🎉" : pct >= 80 ? "아주 좋아요! 👍" : pct >= 60 ? "합격권이에요. 오답만 다시 보면 OK!" : "괜찮아요, 반복이 답이에요 💪";
     $("quiz-area").innerHTML =
       '<div class="result"><div class="result-score">' + quiz.score + " / " + n + '</div><div class="result-pct">' + pct + "%</div><p>" + msg + "</p>" +
-      ((quiz.range === "today" || quiz.range === "upto") ? (pct >= 60 ? '<p class="hint">✓ Day ' + quiz.day + " 복습 퀴즈 완료로 체크했어요</p>" : '<p class="hint">60% 이상이면 오늘 퀴즈 완료로 체크돼요</p>') : "") +
+      (countsForDay ? (pct >= 60 ? '<p class="hint">✓ Day ' + quiz.day + " 복습 퀴즈 완료로 체크했어요</p>" : '<p class="hint">60% 이상이면 오늘 퀴즈 완료로 체크돼요</p>') : "") +
       "</div>" +
       (quiz.wrongList.length ? '<h3 class="sec-title">틀린 문제</h3><div class="row-list">' + quiz.wrongList.map((q) => '<div class="wrow"><div class="fb-body">' + q.explain + "</div></div>").join("") + "</div>" : "") +
       '<div class="result-actions">' +

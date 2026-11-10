@@ -18,6 +18,7 @@
     </div>
     <nav class="tabs" id="tabs">
       <button class="tab-btn" data-view="plan" type="button">📅 계획</button>
+      <button class="tab-btn" data-view="kana" type="button">あ 가나</button>
       <button class="tab-btn" data-view="kanji" type="button">漢 한자</button>
       <button class="tab-btn" data-view="vocab" type="button">📖 단어</button>
       <button class="tab-btn" data-view="grammar" type="button">✏️ 문법</button>
@@ -68,6 +69,23 @@
           </ul>
         </div>
       </details>
+    </section>
+
+    <!-- 가나 표 -->
+    <section id="view-kana" class="view">
+      <div class="toolbar">
+        <div class="seg" id="kana-mode">
+          <button type="button" data-v="hira" class="active">ひらがな 히라가나</button>
+          <button type="button" data-v="kata">カタカナ 가타카나</button>
+          <button type="button" data-v="both">둘 다</button>
+        </div>
+      </div>
+      <div class="toolbar sub">
+        <label class="toggle"><input type="checkbox" id="kana-hide" /> 발음 가리기</label>
+        <button type="button" class="ghost-btn small" id="kana-quiz-btn">가나 읽기 퀴즈 ›</button>
+        <span class="hint">글자를 누르면 발음이 나와요</span>
+      </div>
+      <div id="kana-tables"></div>
     </section>
 
     <!-- 한자 -->
@@ -123,6 +141,7 @@
         <div class="field">
           <div class="field-label">문제 유형</div>
           <div class="seg" id="quiz-type">
+            <button type="button" data-v="kana">가나 읽기</button>
             <button type="button" data-v="kanji" class="active">한자 → 뜻</button>
             <button type="button" data-v="reading">단어 읽기</button>
             <button type="button" data-v="meaning">단어 → 뜻</button>
@@ -179,6 +198,7 @@
 
   <div id="toast" class="toast" hidden></div>
 
+  <script src="js/data-kana.js"></script>
   <script src="js/data-kanji.js"></script>
   <script src="js/data-vocab.js"></script>
   <script src="js/data-grammar.js"></script>
