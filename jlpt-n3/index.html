@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JLPT N3 4주 완성</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Noto+Sans+KR:wght@400;600;700&display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-top">
+      <h1>JLPT N3 <span>4주 완성</span></h1>
+      <div class="header-actions">
+        <button id="furigana-btn" class="chip-btn" type="button" title="후리가나 켜기/끄기">ふりがな ON</button>
+      </div>
+    </div>
+    <nav class="tabs" id="tabs">
+      <button class="tab-btn" data-view="plan" type="button">📅 계획</button>
+      <button class="tab-btn" data-view="kanji" type="button">漢 한자</button>
+      <button class="tab-btn" data-view="vocab" type="button">📖 단어</button>
+      <button class="tab-btn" data-view="grammar" type="button">✏️ 문법</button>
+      <button class="tab-btn" data-view="quiz" type="button">🎯 퀴즈</button>
+      <button class="tab-btn" data-view="wrong" type="button">📝 오답노트</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 계획 -->
+    <section id="view-plan" class="view">
+      <div class="hero">
+        <div class="hero-main">
+          <div class="hero-label">시험까지</div>
+          <div class="hero-dday" id="dday">D-?</div>
+          <div class="hero-sub" id="today-label"></div>
+        </div>
+        <div class="hero-stats" id="hero-stats"></div>
+      </div>
+      <div class="settings-row">
+        <label>시작일 <input type="date" id="start-date" /></label>
+        <label>시험일 <input type="date" id="exam-date" /></label>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>전체 진도</span><span id="overall-pct">0%</span></div>
+        <div class="progress"><div class="progress-bar" id="overall-bar"></div></div>
+      </div>
+      <div id="week-list"></div>
+
+      <details class="info-box">
+        <summary>💡 N3 시험 구성 &amp; 공부 전략</summary>
+        <div class="info-content">
+          <table class="mini-table">
+            <tr><th>교시</th><th>시간</th></tr>
+            <tr><td>언어지식 (문자·어휘)</td><td>30분</td></tr>
+            <tr><td>언어지식 (문법) · 독해</td><td>70분</td></tr>
+            <tr><td>청해</td><td>40분</td></tr>
+          </table>
+          <p>점수: 언어지식(문자·어휘·문법) 60 + 독해 60 + 청해 60 = 180점<br />
+          합격: <b>총점 95점 이상</b> + 각 파트 <b>19점 이상</b> (과락 주의!)</p>
+          <ul>
+            <li><b>1주차</b>: 동사 활용(て형·ない형·た형)을 확실히. 이게 안 되면 문법이 안 보여요.</li>
+            <li><b>2~3주차</b>: 하루 한자 10 + 단어 20 + 문법 5. 매일 퀴즈로 확인하고 틀린 건 오답노트로.</li>
+            <li><b>4주차</b>: 새로운 것보다 <b>오답노트 반복</b>. 기출/모의고사 1회 이상 풀어보기.</li>
+            <li><b>청해</b>는 이 앱 밖에서: 매일 15분 일본어 음성(뉴스·애니·유튜브) 듣기 추천.</li>
+            <li>🔊 버튼으로 발음을 들으며 소리 내어 읽으면 기억이 오래가요.</li>
+          </ul>
+        </div>
+      </details>
+    </section>
+
+    <!-- 한자 -->
+    <section id="view-kanji" class="view">
+      <div class="toolbar">
+        <select id="kanji-day" class="day-select"></select>
+        <input type="search" id="kanji-search" placeholder="한자·뜻·읽기 검색" />
+      </div>
+      <div class="toolbar sub">
+        <label class="toggle"><input type="checkbox" id="kanji-hide" /> 뜻 가리기</label>
+        <label class="toggle"><input type="checkbox" id="kanji-hide-known" /> 외운 것 숨기기</label>
+        <span class="count-badge" id="kanji-count"></span>
+      </div>
+      <div id="kanji-list" class="card-grid"></div>
+    </section>
+
+    <!-- 단어 -->
+    <section id="view-vocab" class="view">
+      <div class="toolbar">
+        <select id="vocab-day" class="day-select"></select>
+        <input type="search" id="vocab-search" placeholder="단어·읽기·뜻 검색" />
+      </div>
+      <div class="toolbar sub">
+        <label class="toggle"><input type="checkbox" id="vocab-hide" /> 뜻 가리기</label>
+        <label class="toggle"><input type="checkbox" id="vocab-hide-reading" /> 읽기 가리기</label>
+        <label class="toggle"><input type="checkbox" id="vocab-hide-known" /> 외운 것 숨기기</label>
+        <span class="count-badge" id="vocab-count"></span>
+      </div>
+      <div id="vocab-list" class="row-list"></div>
+    </section>
+
+    <!-- 문법 -->
+    <section id="view-grammar" class="view">
+      <div class="toolbar">
+        <select id="grammar-day" class="day-select"></select>
+        <input type="search" id="grammar-search" placeholder="문법·뜻 검색" />
+      </div>
+      <div class="toolbar sub">
+        <label class="toggle"><input type="checkbox" id="grammar-hide" /> 해석 가리기</label>
+        <label class="toggle"><input type="checkbox" id="grammar-hide-known" /> 외운 것 숨기기</label>
+        <span class="count-badge" id="grammar-count"></span>
+      </div>
+      <details class="info-box" id="verb-table-box">
+        <summary>📘 왕초보 필수: 동사 그룹 &amp; 활용표</summary>
+        <div class="info-content" id="verb-table"></div>
+      </details>
+      <div id="grammar-list" class="row-list"></div>
+    </section>
+
+    <!-- 퀴즈 -->
+    <section id="view-quiz" class="view">
+      <div id="quiz-setup" class="quiz-setup">
+        <div class="field">
+          <div class="field-label">문제 유형</div>
+          <div class="seg" id="quiz-type">
+            <button type="button" data-v="kanji" class="active">한자 → 뜻</button>
+            <button type="button" data-v="reading">단어 읽기</button>
+            <button type="button" data-v="meaning">단어 → 뜻</button>
+            <button type="button" data-v="reverse">뜻 → 단어</button>
+            <button type="button" data-v="grammar">문법 빈칸</button>
+            <button type="button" data-v="mix">랜덤 혼합</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">범위</div>
+          <div class="seg" id="quiz-range">
+            <button type="button" data-v="today" class="active">오늘(Day)</button>
+            <button type="button" data-v="upto">Day 1~오늘</button>
+            <button type="button" data-v="all">전체</button>
+            <button type="button" data-v="wrong">오답노트</button>
+          </div>
+          <div class="range-day">
+            <label>기준 Day <select id="quiz-day" class="day-select small"></select></label>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">문제 수</div>
+          <div class="seg" id="quiz-count">
+            <button type="button" data-v="10" class="active">10</button>
+            <button type="button" data-v="20">20</button>
+            <button type="button" data-v="30">30</button>
+          </div>
+        </div>
+        <button id="quiz-start" class="primary-btn" type="button">퀴즈 시작</button>
+        <p class="hint">틀린 문제는 자동으로 오답노트에 저장되고, 오답노트 퀴즈에서 맞히면 빠져요.</p>
+      </div>
+      <div id="quiz-area" class="quiz-area" hidden></div>
+    </section>
+
+    <!-- 오답노트 -->
+    <section id="view-wrong" class="view">
+      <div class="toolbar">
+        <div class="seg" id="wrong-filter">
+          <button type="button" data-v="all" class="active">전체</button>
+          <button type="button" data-v="k">한자</button>
+          <button type="button" data-v="v">단어</button>
+          <button type="button" data-v="g">문법</button>
+        </div>
+        <span class="count-badge" id="wrong-count"></span>
+      </div>
+      <div class="toolbar sub">
+        <button type="button" class="ghost-btn" id="wrong-quiz-btn">오답노트로 퀴즈 풀기</button>
+        <button type="button" class="ghost-btn danger" id="wrong-clear-btn">전체 비우기</button>
+      </div>
+      <div id="wrong-list" class="row-list"></div>
+      <p class="empty-msg" id="wrong-empty" hidden>오답노트가 비어 있어요. 퀴즈에서 틀린 문제가 여기에 모여요.</p>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="js/data-kanji.js"></script>
+  <script src="js/data-vocab.js"></script>
+  <script src="js/data-grammar.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
