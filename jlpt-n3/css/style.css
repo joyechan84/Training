@@ -511,3 +511,10 @@ mark.gp { background: var(--mark); color: inherit; border-radius: 4px; padding: 
   .kana-main { font-size: 22px; }
   .kana-grid { gap: 4px; }
 }
+
+/* 한국 한자음 */
+.vhanja { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.5; }
+.vhanja .hko { color: var(--accent); font-size: 13px; margin-right: 4px; }
+.vhanja .hpart { white-space: nowrap; margin-right: 6px; }
+.vhanja .hpart [lang="ja"] { color: var(--text); font-size: 13px; }
+.fb-body .vhanja, .wbody .vhanja { font-size: 13px; }

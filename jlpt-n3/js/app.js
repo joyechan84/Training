@@ -644,6 +644,47 @@
   }
 
   // ---------- 단어 ----------
+  // ---------- 한국 한자음 (예: 勉強 → 면강) ----------
+  const KO_OF = Object.assign({}, typeof HANJA_KO !== "undefined" ? HANJA_KO : {});
+  KANJI.forEach((k) => (KO_OF[k.char] = k.mean));
+  const DUEUM = { 녀: "여", 뇨: "요", 뉴: "유", 니: "이", 랴: "야", 려: "여", 례: "예", 료: "요", 류: "유", 리: "이",
+    라: "나", 래: "내", 로: "노", 뢰: "뇌", 루: "누", 르: "느", 량: "양", 력: "역", 련: "연", 렬: "열", 령: "영",
+    록: "녹", 론: "논", 룡: "용", 률: "율", 륙: "육", 륜: "윤", 릉: "능", 림: "임", 립: "입", 녕: "영", 념: "염", 락: "낙", 란: "난", 람: "남", 랑: "낭", 랭: "냉" };
+  const hasFinal = (ch) => { const c = ch.charCodeAt(0) - 0xac00; return c >= 0 && c % 28 !== 0; };
+  const finalIsN = (ch) => (ch.charCodeAt(0) - 0xac00) % 28 === 4;
+  function hanjaInfo(word) {
+    const parts = [];
+    let prev = null;
+    for (const c of word) {
+      if (c === "々" && prev) { parts.push(prev); continue; }
+      if (/[\u4e00-\u9fff]/.test(c) && KO_OF[c]) { prev = [c, KO_OF[c]]; parts.push(prev); }
+    }
+    if (!parts.length) return null;
+    const sounds = parts.map((p) => p[1].trim().split(/\s+/).pop());
+    const ko = sounds.map((snd, i) => {
+      if (i === 0 && DUEUM[snd]) return DUEUM[snd]; // 두음법칙 (料理 → 요리)
+      if (i > 0 && (snd === "렬" || snd === "률")) {
+        const b = sounds[i - 1];
+        if (!hasFinal(b) || finalIsN(b)) return snd === "렬" ? "열" : "율"; // 規律 → 규율
+      }
+      return snd;
+    }).join("");
+    return { ko, parts };
+  }
+  function hanjaLine(word, hidden) {
+    const h = hanjaInfo(word);
+    if (!h) return "";
+    return '<div class="vhanja ' + (hidden ? "reveal" : "") + '"><span><b class="hko">' + esc(h.ko) + "</b> " +
+      h.parts.map((p) => '<span class="hpart"><span lang="ja">' + esc(p[0]) + "</span> " + esc(p[1]) + "</span>").join(" ") + "</span></div>";
+  }
+  let hanjaOn = store.get("hanjaOn", true) !== false;
+  $("vocab-hanja").checked = hanjaOn;
+  $("vocab-hanja").addEventListener("change", (e) => {
+    hanjaOn = e.target.checked;
+    store.set("hanjaOn", hanjaOn);
+    renderVocab();
+  });
+
   function renderVocab() {
     const items = filterItems(VOCAB, "vocab", (x) => [x.word, x.read, x.mean]);
     const hide = $("vocab-hide").checked;
@@ -652,6 +693,7 @@
     $("vocab-list").innerHTML = items.map((v) =>
       '<article class="vrow"><div class="vmain"><div class="vword" lang="ja">' + esc(v.word) + "</div>" +
       (v.read ? '<div class="vread ' + (hideR ? "reveal" : "") + '" lang="ja"><span>' + esc(v.read) + "</span></div>" : "") +
+      (hanjaOn ? hanjaLine(v.word, hide) : "") +
       '</div><div class="vmean ' + (hide ? "reveal" : "") + '"><span>' + esc(v.mean) + "</span></div>" +
       '<div class="vact">' + speakBtn(v.read ? v.read.split("・")[0] : v.word) + knownBtn(v.id) + "</div></article>"
     ).join("") + doneFooter("vocab", "v", "단어");
@@ -793,20 +835,20 @@
       const len = item.read.length;
       opts = distractors(VOCAB.filter((v) => v.read), item, (x) => x.read, 3, (x) => (Math.abs(x.read.length - len) <= 1 ? 1 : 0) + (x.read[0] === item.read[0] ? 1 : 0));
       optLang = "ja";
-      explain = '<span lang="ja">' + rubyWord(item.word, item.read) + "</span> = " + esc(item.mean);
+      explain = '<span lang="ja">' + rubyWord(item.word, item.read) + "</span> = " + esc(item.mean) + hanjaLine(item.word);
       say = item.read.split("・")[0];
     } else if (t === "meaning") {
       prompt = '<div class="q-big" lang="ja">' + esc(item.word) + '</div><div class="q-ask">뜻은?</div>';
       answer = item.mean;
       opts = distractors(VOCAB, item, (x) => x.mean, 3);
-      explain = '<span lang="ja">' + esc(item.word) + (item.read ? " (" + esc(item.read) + ")" : "") + "</span> = " + esc(item.mean);
+      explain = '<span lang="ja">' + esc(item.word) + (item.read ? " (" + esc(item.read) + ")" : "") + "</span> = " + esc(item.mean) + hanjaLine(item.word);
       say = item.read ? item.read.split("・")[0] : item.word;
     } else if (t === "reverse") {
       prompt = '<div class="q-mid">' + esc(item.mean) + '</div><div class="q-ask">이 뜻의 일본어 단어는?</div>';
       answer = item.word;
       opts = distractors(VOCAB, item, (x) => x.word, 3);
       optLang = "ja";
-      explain = '<span lang="ja">' + esc(item.word) + (item.read ? " (" + esc(item.read) + ")" : "") + "</span> = " + esc(item.mean);
+      explain = '<span lang="ja">' + esc(item.word) + (item.read ? " (" + esc(item.read) + ")" : "") + "</span> = " + esc(item.mean) + hanjaLine(item.word);
       say = item.read ? item.read.split("・")[0] : item.word;
     } else {
       prompt = '<div class="q-sent" lang="ja">' + ruby(item.before) + '<span class="q-blank">（　　）</span>' + ruby(item.after) + "</div>" +
@@ -945,7 +987,7 @@
       const x = BY_ID[id];
       let body;
       if (id[0] === "k") body = '<span class="wtag">한자</span><b class="wbig" lang="ja">' + esc(x.char) + "</b> " + esc(x.mean) + ' <small lang="ja">' + esc(x.on) + " / " + esc(x.kun) + "</small>";
-      else if (id[0] === "v") body = '<span class="wtag">단어</span><b class="wbig" lang="ja">' + rubyWord(x.word, x.read) + "</b> " + esc(x.mean);
+      else if (id[0] === "v") body = '<span class="wtag">단어</span><b class="wbig" lang="ja">' + rubyWord(x.word, x.read) + "</b> " + esc(x.mean) + hanjaLine(x.word);
       else body = '<span class="wtag">문법</span><b lang="ja">' + esc(x.pat) + "</b> " + esc(x.mean) + '<div class="gex" lang="ja">' + ruby(x.ex, true) + "</div><div class=\"gko\">" + esc(x.ko) + "</div>";
       return '<div class="wrow"><div class="wbody">' + body + '</div><div class="wact"><span class="wcnt">×' + wrong[id] + "</span>" +
         speakBtn(id[0] === "k" ? x.ex[0].r : id[0] === "v" ? (x.read ? x.read.split("・")[0] : x.word) : speechText(x.ex)) +
