@@ -477,3 +477,8 @@ mark.gp { background: var(--mark); color: inherit; border-radius: 4px; padding: 
   .q-big { font-size: 48px; }
   .q-sent { font-size: 18px; }
 }
+
+/* 계정 동기화 안내 */
+.sync-note { font-size: 13px; color: var(--muted); margin: 12px 2px 0; padding: 8px 12px; background: var(--surface-2); border-radius: 10px; }
+.sync-note[data-state="synced"] { color: var(--ok); background: var(--ok-soft); }
+.sync-note[data-state="error"], .sync-note[data-state="full"] { color: var(--ng); background: var(--ng-soft); }

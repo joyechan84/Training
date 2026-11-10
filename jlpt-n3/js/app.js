@@ -63,18 +63,159 @@
     return toISO(exam);
   }
 
-  const settings = Object.assign(
-    { start: toISO(new Date()), exam: defaultExamDate(), furigana: true },
-    store.get("settings", {})
-  );
-  store.set("settings", settings);
-  let tasks = store.get("tasks", {}); // { "3": { k:true, v:true, g:false, q:true } }
-  let known = new Set(store.get("known", [])); // "k12", "v40", "g3"
-  let wrong = store.get("wrong", {}); // { id: 틀린 횟수 }
+  // 화면 코드가 쓰는 상태 (아래 rec 에서 만들어짐)
+  const settings = { start: toISO(new Date()), exam: defaultExamDate(), furigana: true };
+  let tasks = {}; // { "3": { k:true, v:true, g:false, q:true } }
+  const known = new Set(); // "k12", "v40", "g3"
+  let wrong = {}; // { id: 틀린 횟수 }
 
-  const saveTasks = () => store.set("tasks", tasks);
-  const saveKnown = () => store.set("known", Array.from(known));
-  const saveWrong = () => store.set("wrong", wrong);
+  // ---------- 진도 기록 (항목마다 [값, 수정시각]) ----------
+  // 기기 여러 대에서 따로 학습해도, 항목별로 더 나중에 바꾼 쪽을 남겨 합친다.
+  function freshRec() {
+    return { v: 2, settings: {}, tasks: {}, known: {}, wrong: {} };
+  }
+  let rec = Object.assign(freshRec(), store.get("rec", null) || {});
+  if (!store.get("rec", null)) {
+    // 예전 버전(항목별 키)에 저장된 기록을 옮겨 온다
+    const t0 = 1;
+    const os = store.get("settings", null);
+    if (os) Object.keys(os).forEach((k) => (rec.settings[k] = [os[k], t0]));
+    const ot = store.get("tasks", {});
+    Object.keys(ot).forEach((d) => Object.keys(ot[d] || {}).forEach((k) => (rec.tasks[d + "." + k] = [!!ot[d][k], t0])));
+    store.get("known", []).forEach((id) => (rec.known[id] = [1, t0]));
+    const ow = store.get("wrong", {});
+    Object.keys(ow).forEach((id) => (rec.wrong[id] = [ow[id], t0]));
+  }
+  if (!rec.settings.start) rec.settings.start = [settings.start, 1];
+
+  function buildFromRec() {
+    Object.keys(rec.settings).forEach((k) => (settings[k] = rec.settings[k][0]));
+    tasks = {};
+    Object.keys(rec.tasks).forEach((key) => {
+      if (!rec.tasks[key][0]) return;
+      const [d, k] = key.split(".");
+      (tasks[d] = tasks[d] || {})[k] = true;
+    });
+    known.clear();
+    Object.keys(rec.known).forEach((id) => rec.known[id][0] && known.add(id));
+    wrong = {};
+    Object.keys(rec.wrong).forEach((id) => rec.wrong[id][0] > 0 && (wrong[id] = rec.wrong[id][0]));
+  }
+  // 현재 화면 상태와 기록을 비교해 바뀐 항목만 시각을 찍는다
+  function diffInto(section, current, empty) {
+    const now = Date.now();
+    let changed = false;
+    const sec = rec[section];
+    Object.keys(current).forEach((k) => {
+      if (!sec[k] || sec[k][0] !== current[k]) { sec[k] = [current[k], now]; changed = true; }
+    });
+    Object.keys(sec).forEach((k) => {
+      if (!(k in current) && sec[k][0] !== empty) { sec[k] = [empty, now]; changed = true; }
+    });
+    return changed;
+  }
+  function persist(changed) {
+    if (!changed) return;
+    store.set("rec", rec);
+    scheduleRemote();
+  }
+  function saveSettings() {
+    persist(diffInto("settings", { start: settings.start, exam: settings.exam, furigana: settings.furigana }, null));
+  }
+  function saveTasks() {
+    const flat = {};
+    Object.keys(tasks).forEach((d) => Object.keys(tasks[d]).forEach((k) => tasks[d][k] && (flat[d + "." + k] = true)));
+    persist(diffInto("tasks", flat, false));
+  }
+  function saveKnown() {
+    const cur = {};
+    known.forEach((id) => (cur[id] = 1));
+    persist(diffInto("known", cur, 0));
+  }
+  function saveWrong() {
+    persist(diffInto("wrong", Object.assign({}, wrong), 0));
+  }
+  function mergeRec(a, b) {
+    const out = freshRec();
+    ["settings", "tasks", "known", "wrong"].forEach((s) => {
+      const A = (a && a[s]) || {}, B = (b && b[s]) || {};
+      new Set(Object.keys(A).concat(Object.keys(B))).forEach((k) => {
+        const x = A[k], y = B[k];
+        out[s][k] = !x ? y : !y ? x : y[1] > x[1] ? y : x;
+      });
+    });
+    return out;
+  }
+  buildFromRec();
+  store.set("rec", rec);
+
+  // ---------- claude.ai 계정 동기화 (로그인 상태로 열면 어느 기기에서든 이어짐) ----------
+  const sync = { doc: null, state: "local", writing: false, again: false, timer: null };
+  function scheduleRemote() {
+    if (!sync.doc) return;
+    clearTimeout(sync.timer);
+    sync.timer = setTimeout(writeRemote, 700);
+  }
+  async function writeRemote() {
+    if (!sync.doc) return;
+    if (sync.writing) { sync.again = true; return; }
+    sync.writing = true;
+    try {
+      await sync.doc.set(JSON.parse(JSON.stringify(rec)));
+      setSyncState("synced");
+    } catch (e) {
+      setSyncState(e && e.code === "quota_exceeded" ? "full" : "error");
+    }
+    sync.writing = false;
+    if (sync.again) { sync.again = false; writeRemote(); }
+  }
+  function syncNoteText() {
+    return {
+      local: "💾 진도가 이 기기 브라우저에만 저장돼요. claude.ai에 로그인한 상태로 링크를 열면 계정에 저장되어 어느 기기에서든 이어져요.",
+      connecting: "☁ 계정 기록을 불러오는 중…",
+      synced: "☁ claude.ai 계정에 저장됨 · 같은 계정으로 링크를 열면 폰·PC 어디서든 이어져요.",
+      error: "⚠ 계정 저장에 실패했어요. 이 기기에는 저장되어 있고, 다음 기록 때 다시 시도해요.",
+      full: "⚠ 계정 저장 공간이 가득 찼어요. 이 기기에는 저장되어 있어요.",
+    }[sync.state];
+  }
+  function setSyncState(st) {
+    sync.state = st;
+    const el = document.getElementById("sync-note");
+    if (el) { el.textContent = syncNoteText(); el.dataset.state = st; }
+  }
+  function applyRemote(data) {
+    const merged = mergeRec(rec, data);
+    const changed = JSON.stringify(merged) !== JSON.stringify(rec);
+    rec = merged;
+    buildFromRec();
+    store.set("rec", rec);
+    return changed;
+  }
+  async function startSync() {
+    const use = window.claude && window.claude.use;
+    if (!use) return;
+    try {
+      const [db, user] = await Promise.all([use("db"), use("user")]);
+      const uid = db && user ? await user.id() : null;
+      if (!uid) return;
+      sync.doc = db.doc("data/users/" + uid + "/jlpt-n3");
+      setSyncState("connecting");
+      const snap = await sync.doc.get();
+      const had = snap.exists;
+      if (had) applyRemote(snap.data());
+      if (!had || JSON.stringify(snap.data()) !== JSON.stringify(rec)) await writeRemote();
+      else setSyncState("synced");
+      refreshQuiet();
+      // 다른 기기에서 공부하면 이 화면에도 반영
+      sync.doc.onSnapshot((s) => {
+        if (!s.exists || s.metadata.hasPendingWrites || sync.writing) return;
+        if (applyRemote(s.data())) refreshQuiet();
+      }, () => setSyncState("error"));
+    } catch (e) {
+      sync.doc = null;
+      setSyncState("local");
+    }
+  }
 
   // ---------- 데이터 정리 ----------
   const KANJI = KANJI_DATA.map((r, i) => ({
@@ -218,7 +359,7 @@
   }
   $("furigana-btn").addEventListener("click", () => {
     settings.furigana = !settings.furigana;
-    store.set("settings", settings);
+    saveSettings();
     applyFurigana();
   });
 
@@ -347,14 +488,14 @@
   $("start-date").addEventListener("change", (e) => {
     if (!e.target.value) return;
     settings.start = e.target.value;
-    store.set("settings", settings);
+    saveSettings();
     setDefaultDays();
     renderPlan();
   });
   $("exam-date").addEventListener("change", (e) => {
     if (!e.target.value) return;
     settings.exam = e.target.value;
-    store.set("settings", settings);
+    saveSettings();
     renderPlan();
   });
 
@@ -767,9 +908,22 @@
     toast("오답노트를 비웠어요");
   });
 
+  // 다른 기기의 기록이 들어왔을 때: 퀴즈 도중이면 화면은 그대로 두고, 나머지는 다시 그린다
+  function refreshQuiet() {
+    applyFurigana();
+    const v = location.hash.slice(1) || "plan";
+    if (v === "plan") renderPlan();
+    else if (v === "kanji") renderKanji();
+    else if (v === "vocab") renderVocab();
+    else if (v === "grammar") renderGrammar();
+    else if (v === "wrong") renderWrong();
+  }
+
   // ---------- 시작 ----------
   applyFurigana();
   renderVerbTable();
   setDefaultDays();
+  setSyncState("local");
   show(location.hash.slice(1) || "plan");
+  startSync();
 })();
