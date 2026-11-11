@@ -226,13 +226,18 @@
   const VOCAB = VOCAB_DATA.map((r, i) => ({
     id: "v" + i, day: Math.floor(i / PER_DAY.v) + 1, word: r[0], read: r[1], mean: r[2],
   }));
+  // 예문 하나를 [앞, 빈칸, 뒤] 로 나눔
+  function splitEx(ex, ko) {
+    const m = ex.match(/^(.*)\[(.+?)\](.*)$/);
+    return { ex, ko, before: m ? m[1] : ex, blank: m ? m[2] : "", after: m ? m[3] : "" };
+  }
+  const EXTRA = typeof GRAMMAR_EXTRA !== "undefined" ? GRAMMAR_EXTRA : [];
   const GRAMMAR = GRAMMAR_DATA.map((r, i) => {
-    const m = r[3].match(/^(.*)\[(.+?)\](.*)$/);
-    return {
+    const exs = [splitEx(r[3], r[4])].concat((EXTRA[i] || []).map((e) => splitEx(e[0], e[1])));
+    return Object.assign({
       id: "g" + i, day: Math.floor(i / PER_DAY.g) + 1,
-      pat: r[0], mean: r[1], conn: r[2], ex: r[3], ko: r[4],
-      before: m ? m[1] : r[3], blank: m ? m[2] : "", after: m ? m[3] : "",
-    };
+      pat: r[0], mean: r[1], conn: r[2], exs,
+    }, exs[0]);
   });
   const BY_ID = {};
   KANJI.concat(VOCAB, GRAMMAR).forEach((x) => (BY_ID[x.id] = x));
@@ -701,15 +706,16 @@
 
   // ---------- 문법 ----------
   function renderGrammar() {
-    const items = filterItems(GRAMMAR, "grammar", (x) => [x.pat, x.mean, x.conn, x.ex, x.ko]);
+    const items = filterItems(GRAMMAR, "grammar", (x) => [x.pat, x.mean, x.conn].concat(x.exs.map((e) => e.ex + e.ko)));
     const hide = $("grammar-hide").checked;
     $("grammar-count").textContent = items.length + "개";
     $("grammar-list").innerHTML = items.map((g) =>
       '<article class="grow"><div class="ghead"><span class="gpat" lang="ja">' + esc(g.pat) + '</span><span class="day-tag">Day ' + g.day + "</span></div>" +
       '<div class="gmean">' + esc(g.mean) + "</div>" +
       '<div class="gconn">접속: <span lang="ja">' + esc(g.conn) + "</span></div>" +
-      '<div class="gex" lang="ja">' + ruby(g.ex, true) + speakBtn(speechText(g.ex)) + "</div>" +
-      '<div class="gko ' + (hide ? "reveal" : "") + '"><span>' + esc(g.ko) + "</span></div>" +
+      '<ol class="gexs">' + g.exs.map((e) =>
+        '<li><div class="gex" lang="ja">' + ruby(e.ex, true) + speakBtn(speechText(e.ex)) + "</div>" +
+        '<div class="gko ' + (hide ? "reveal" : "") + '"><span>' + esc(e.ko) + "</span></div></li>").join("") + "</ol>" +
       '<div class="card-actions">' + knownBtn(g.id) + "</div></article>"
     ).join("") + doneFooter("grammar", "g", "문법");
   }
@@ -851,13 +857,24 @@
       explain = '<span lang="ja">' + esc(item.word) + (item.read ? " (" + esc(item.read) + ")" : "") + "</span> = " + esc(item.mean) + hanjaLine(item.word);
       say = item.read ? item.read.split("・")[0] : item.word;
     } else {
-      prompt = '<div class="q-sent" lang="ja">' + ruby(item.before) + '<span class="q-blank">（　　）</span>' + ruby(item.after) + "</div>" +
-        '<div class="q-ask">빈칸에 들어갈 알맞은 표현은?</div><div class="q-hint reveal"><span>💬 ' + esc(item.ko) + "</span></div>";
-      answer = item.blank;
-      opts = distractors(GRAMMAR.filter((g) => g.blank), item, (x) => x.blank, 3);
+      // 예문 3개 중 하나를 무작위로 골라 출제
+      const ex = item.exs[Math.floor(Math.random() * item.exs.length)];
+      prompt = '<div class="q-sent" lang="ja">' + ruby(ex.before) + '<span class="q-blank">（　　）</span>' + ruby(ex.after) + "</div>" +
+        '<div class="q-ask">빈칸에 들어갈 알맞은 표현은?</div><div class="q-hint reveal"><span>💬 ' + esc(ex.ko) + "</span></div>";
+      answer = ex.blank;
+      const seen = new Set([plain(answer)]);
+      opts = [];
+      for (const g of shuffle(GRAMMAR)) {
+        if (g === item) continue;
+        const b = g.exs[Math.floor(Math.random() * g.exs.length)].blank;
+        if (!b || seen.has(plain(b))) continue;
+        seen.add(plain(b));
+        opts.push(b);
+        if (opts.length >= 3) break;
+      }
       optLang = "ja";
-      explain = '<b lang="ja">' + esc(item.pat) + "</b> — " + esc(item.mean) + '<br /><span lang="ja">' + ruby(item.ex, true) + "</span><br />" + esc(item.ko);
-      say = speechText(item.ex);
+      explain = '<b lang="ja">' + esc(item.pat) + "</b> — " + esc(item.mean) + '<br /><span lang="ja">' + ruby(ex.ex, true) + "</span><br />" + esc(ex.ko);
+      say = speechText(ex.ex);
     }
     const options = shuffle([answer].concat(opts));
     return { item, t, prompt, answer, options, explain, say, optLang };

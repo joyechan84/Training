@@ -518,3 +518,10 @@ mark.gp { background: var(--mark); color: inherit; border-radius: 4px; padding: 
 .vhanja .hpart { white-space: nowrap; margin-right: 6px; }
 .vhanja .hpart [lang="ja"] { color: var(--text); font-size: 13px; }
 .fb-body .vhanja, .wbody .vhanja { font-size: 13px; }
+
+/* 문법 예문 3개 */
+.gexs { margin: 8px 0 0; padding-left: 1.4em; }
+.gexs li { margin-top: 4px; }
+.gexs li::marker { color: var(--muted); font-size: 13px; }
+.gexs .gex { margin-top: 0; }
+.gexs li + li { border-top: 1px dashed var(--line); padding-top: 4px; }
