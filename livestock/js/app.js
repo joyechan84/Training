@@ -135,7 +135,7 @@
       <button class="fav-btn ${state.favs.has(it.id) ? "on" : ""}" data-fav="${esc(it.id)}" aria-label="관심 아이템">★</button>
       <div class="biz-top">${isNew ? '<span class="badge new">NEW</span>' : ""}
         <span class="badge">${esc(it.category)}</span>${it.target.map((t) => `<span class="badge">${esc(t)}</span>`).join("")}
-        ${it.aiGenerated ? '<span class="badge">AI 분석</span>' : ""}</div>
+        ${it.novel ? '<span class="badge novel">신규 발굴</span>' : ""}${it.aiGenerated ? '<span class="badge">AI 분석</span>' : ""}</div>
       <h3>${esc(it.emoji || "")} ${esc(it.title)}</h3>
       <p class="sum">${esc(it.summary)}</p>
       <div class="kpis"><span class="overall">${overall(it).toFixed(1)}</span>
@@ -147,12 +147,13 @@
 
   function renderBiz() {
     const cat = $("#biz-cat").value, budget = $("#biz-budget").value, target = $("#biz-target").value;
-    const sort = $("#biz-sort").value, favOnly = $("#biz-fav").checked;
+    const sort = $("#biz-sort").value, favOnly = $("#biz-fav").checked, novelOnly = $("#biz-novel").checked;
     let list = state.biz.filter((it) =>
       (cat === "all" || it.category === cat) &&
       (budget === "all" || budgetOf(it) === budget) &&
       (target === "all" || it.target.includes(target)) &&
-      (!favOnly || state.favs.has(it.id)));
+      (!favOnly || state.favs.has(it.id)) &&
+      (!novelOnly || it.novel));
     const sorters = {
       overall: (a, b) => overall(b) - overall(a),
       feasibility: (a, b) => b.scores.feasibility - a.scores.feasibility || overall(b) - overall(a),
@@ -190,9 +191,10 @@
     if (!it) return;
     const li = (arr) => (arr || []).map((x) => `<li>${esc(x)}</li>`).join("");
     $("#biz-detail").innerHTML = `
-      <div class="biz-top"><span class="badge">${esc(it.category)}</span>${it.aiGenerated ? `<span class="badge">AI 분석 · ${esc(it.date)}</span>` : ""}</div>
+      <div class="biz-top"><span class="badge">${esc(it.category)}</span>${it.novel ? '<span class="badge novel">신규 발굴</span>' : ""}${it.aiGenerated ? `<span class="badge">AI 분석 · ${esc(it.date)}</span>` : ""}</div>
       <h2>${esc(it.emoji || "")} ${esc(it.title)}</h2>
       <p>${esc(it.summary)}</p>
+      ${it.noveltyNote ? `<div class="why novel-why">🆕 <b>무엇이 새로운가?</b> ${esc(it.noveltyNote)}</div>` : ""}
       ${it.whyNow ? `<div class="why">📈 <b>왜 지금?</b> ${esc(it.whyNow)}</div>` : ""}
       <h4>종합 평가 <span class="overall">${overall(it).toFixed(1)}</span> / 5</h4>
       ${scoreRows(it)}
@@ -220,7 +222,7 @@
     const card = e.target.closest("[data-id]");
     if (card) openDetail(card.dataset.id);
   });
-  ["#biz-cat", "#biz-budget", "#biz-target", "#biz-sort", "#biz-fav"].forEach((s) => $(s).addEventListener("change", renderBiz));
+  ["#biz-cat", "#biz-budget", "#biz-target", "#biz-sort", "#biz-fav", "#biz-novel"].forEach((s) => $(s).addEventListener("change", renderBiz));
   $("#biz-dialog").addEventListener("click", (e) => { if (e.target.id === "biz-dialog") e.target.close(); });
 
   /* ---------------- 로딩 ---------------- */

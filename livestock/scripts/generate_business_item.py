@@ -34,6 +34,7 @@ ITEM_SCHEMA = {
         "category": {"type": "string", "enum": ["가공·유통", "스마트축산", "환경·자원순환", "사료·바이오", "서비스", "6차산업", "사육"]},
         "summary": {"type": "string"},
         "whyNow": {"type": "string"},
+        "noveltyNote": {"type": "string"},
         "target": STR_LIST,
         "targetDesc": {"type": "string"},
         "cost": {
@@ -56,7 +57,7 @@ ITEM_SCHEMA = {
         "risks": STR_LIST,
         "steps": STR_LIST,
     },
-    "required": ["emoji", "title", "category", "summary", "whyNow", "target", "targetDesc", "cost",
+    "required": ["emoji", "title", "category", "summary", "whyNow", "noveltyNote", "target", "targetDesc", "cost",
                  "costNote", "scores", "risk", "revenueModel", "requirements", "supports", "risks", "steps"],
     "additionalProperties": False,
 }
@@ -69,7 +70,7 @@ SYSTEM = """당신은 한국 축산업 창업 컨설턴트입니다. 축산 전�
 - requirements 에는 관련 인허가·법령(축산법, 가축분뇨법, 사료관리법, 축산물위생관리법 등)을 정확히 적고, 확실하지 않으면 '~ 여부 확인 필요'라고 씁니다.
 - supports 에는 실제 존재하는 정부·공공 지원사업 이름만 적고, 이름을 확신할 수 없으면 일반적인 표현(예: '지자체 6차산업 지원사업')을 씁니다.
 - whyNow 에는 제공된 최근 뉴스와 연결된 시의성을 1~2문장으로 적습니다. 뉴스와 무관하면 일반 트렌드로 설명합니다.
-- 기존 아이템과 겹치지 않는 새로운 아이템이어야 합니다. 모든 텍스트는 한국어로 씁니다."""
+- 기존 아이템과 겹치지 않아야 하고, 국내에서 아직 본격적으로 사업화되지 않은 새로운 아이디어를 우선합니다. noveltyNote 에 기존 사업과 무엇이 다른지, 해외 유사 사례가 있다면 무엇인지 적습니다. 확신이 없으면 '선행 사례 검색 필요'라고 씁니다. 모든 텍스트는 한국어로 씁니다."""
 
 
 def load(path: Path, default):
@@ -134,6 +135,7 @@ def main() -> int:
     item["id"] = f"ai-{today}"
     item["date"] = today
     item["aiGenerated"] = True
+    item["novel"] = True
 
     ai["items"].insert(0, item)
     ai["items"] = ai["items"][:MAX_AI_ITEMS]
