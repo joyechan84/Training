@@ -1,0 +1,54 @@
+name: Livestock daily update
+
+# 매일 오전 5시 43분(KST) 축산 뉴스 수집 + (API 키가 있으면) AI 사업아이템 생성
+on:
+  schedule:
+    - cron: "43 20 * * *"   # UTC 20:43 = KST 05:43
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: livestock-daily
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Fetch livestock news
+        run: python3 livestock/scripts/fetch_news.py
+
+      - name: Generate AI business item (optional)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            pip install --quiet anthropic
+          fi
+          python3 livestock/scripts/generate_business_item.py
+
+      - name: Commit data
+        run: |
+          git config user.name "livestock-bot"
+          git config user.email "livestock-bot@users.noreply.github.com"
+          git add livestock/data
+          if git diff --cached --quiet; then
+            echo "변경 없음"
+            exit 0
+          fi
+          git commit -m "chore(livestock): daily data update $(TZ=Asia/Seoul date +%F)"
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((i * 5))
+          done
+          exit 1

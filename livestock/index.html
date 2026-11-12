@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="공신력 있는 기관의 축산 뉴스와 비용·현실성·대상을 평가한 축산 사업아이템을 매일 업데이트합니다." />
+  <title>축산 데일리</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐄</text></svg>" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-top">
+      <h1>🐄 축산 데일리</h1>
+      <span id="updated" class="updated"></span>
+    </div>
+    <nav class="tabs" role="tablist">
+      <button class="tab-btn active" data-view="news" role="tab">📰 축산 뉴스</button>
+      <button class="tab-btn" data-view="biz" role="tab">💡 사업아이템</button>
+      <button class="tab-btn" data-view="about" role="tab">ℹ️ 출처·안내</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 뉴스 -->
+    <section id="view-news" class="view active">
+      <div class="filters">
+        <input type="search" id="news-search" placeholder="뉴스 검색 (예: 한우, 방역, 사료)" />
+        <div class="seg" id="news-region">
+          <button data-v="all" class="on">전체</button>
+          <button data-v="kr">국내</button>
+          <button data-v="intl">해외</button>
+        </div>
+        <div class="seg" id="news-tier">
+          <button data-v="all" class="on">모든 출처</button>
+          <button data-v="gov">정부·공공기관</button>
+          <button data-v="intl">국제기구</button>
+          <button data-v="press">공영·전문언론</button>
+        </div>
+      </div>
+      <div class="chips" id="news-cats"></div>
+      <div id="news-list"></div>
+      <button id="news-more" class="more-btn" hidden>더 보기</button>
+      <p id="news-empty" class="empty" hidden></p>
+    </section>
+
+    <!-- 사업아이템 -->
+    <section id="view-biz" class="view">
+      <div id="biz-featured"></div>
+      <div class="filters">
+        <select id="biz-cat"><option value="all">모든 분야</option></select>
+        <select id="biz-budget">
+          <option value="all">모든 예산</option>
+          <option value="s">3천만원 이하로 시작 가능</option>
+          <option value="m">3천만 ~ 1억원</option>
+          <option value="l">1억원 이상</option>
+        </select>
+        <select id="biz-target">
+          <option value="all">모든 대상</option>
+          <option value="B2C">소비자(B2C)</option>
+          <option value="B2B">기업·농가(B2B)</option>
+        </select>
+        <select id="biz-sort">
+          <option value="overall">종합점수순</option>
+          <option value="feasibility">현실성 높은순</option>
+          <option value="cost">초기비용 낮은순</option>
+          <option value="profitability">수익성 높은순</option>
+          <option value="new">최신순</option>
+        </select>
+        <label class="fav-toggle"><input type="checkbox" id="biz-fav" /> ★ 관심만</label>
+      </div>
+      <p class="note" id="biz-note"></p>
+      <div id="biz-list" class="biz-grid"></div>
+    </section>
+
+    <!-- 안내 -->
+    <section id="view-about" class="view">
+      <div class="card about">
+        <h2>뉴스 출처 기준</h2>
+        <p>아래 기관·매체의 공식 피드만 수집합니다. 각 기사에는 출처 등급 배지가 붙습니다.</p>
+        <ul>
+          <li><span class="tier tier-gov">정부·공공</span> 농림축산식품부, 농촌진흥청·국립축산과학원, 농림축산검역본부, 축산물품질평가원, 한국농촌경제연구원, 대한민국 정책브리핑</li>
+          <li><span class="tier tier-intl">국제기구</span> FAO(유엔식량농업기구), WOAH(세계동물보건기구), USDA(미국 농무부)</li>
+          <li><span class="tier tier-press">공영·전문언론</span> 연합뉴스, 농민신문, 축산신문, 농수축산신문</li>
+        </ul>
+        <h2>사업아이템 평가 기준</h2>
+        <ul>
+          <li><b>초기비용</b>: 2026년 국내 기준 개략 추정 범위(만원). 토지·건물 보유 여부에 따라 크게 달라집니다.</li>
+          <li><b>현실성</b>: 개인·소규모 팀이 실제로 실행 가능한 정도</li>
+          <li><b>수익성</b>: 비용 대비 기대 이익</li>
+          <li><b>시장성</b>: 수요 규모와 성장성</li>
+          <li><b>진입 용이성</b>: 인허가·기술·자본 장벽이 낮을수록 높음</li>
+          <li><b>종합점수</b>: 네 항목의 평균 (5점 만점)</li>
+        </ul>
+        <p class="warn">⚠️ 비용·점수·인허가 정보는 참고용입니다. 창업 전 반드시 지자체, 농업기술센터, 관련 법령 원문을 확인하세요.</p>
+        <h2>업데이트 방식</h2>
+        <p>GitHub Actions가 매일 새벽(KST 05:43)에 뉴스를 수집하고, <code>ANTHROPIC_API_KEY</code>가 설정된 경우 최근 뉴스를 반영한 새 사업아이템을 1건씩 추가합니다.</p>
+        <div id="source-status"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="biz-dialog">
+    <div id="biz-detail"></div>
+    <form method="dialog"><button class="primary-btn">닫기</button></form>
+  </dialog>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
