@@ -774,6 +774,12 @@
     return { k: KANJI.filter(inRange), v: VOCAB.filter(inRange), g: GRAMMAR.filter(inRange) };
   }
 
+  // 훈독이 없는 한자(百·校 등)는 훈독 문제에서 뺀다
+  function hasKun(k) { return k.kun && k.kun !== "-"; }
+  function kanjiType(k) {
+    const opts = hasKun(k) ? ["kanji", "on", "kun"] : ["kanji", "on"];
+    return opts[Math.floor(Math.random() * opts.length)];
+  }
   function vocabType(v, preferred) {
     const canRead = v.read && HAS_KANJI.test(v.word);
     if (preferred === "reading") return canRead ? "reading" : "meaning";
@@ -790,11 +796,13 @@
     const pool = poolFor(range, day);
     let entries = [];
     if (type === "kanji") entries = pool.k.map((x) => ({ item: x, t: "kanji" }));
+    else if (type === "on") entries = pool.k.map((x) => ({ item: x, t: "on" }));
+    else if (type === "kun") entries = pool.k.filter(hasKun).map((x) => ({ item: x, t: "kun" }));
     else if (type === "reading") entries = pool.v.filter((v) => v.read && HAS_KANJI.test(v.word)).map((x) => ({ item: x, t: "reading" }));
     else if (type === "meaning" || type === "reverse") entries = pool.v.map((x) => ({ item: x, t: type }));
     else if (type === "grammar") entries = pool.g.map((x) => ({ item: x, t: "grammar" }));
     else {
-      entries = pool.k.map((x) => ({ item: x, t: "kanji" }))
+      entries = pool.k.map((x) => ({ item: x, t: kanjiType(x) }))
         .concat(pool.v.map((x) => ({ item: x, t: vocabType(x) })))
         .concat(pool.g.map((x) => ({ item: x, t: "grammar" })));
     }
@@ -828,6 +836,18 @@
       opts = distractors(pool || kanaPool(), item, label, 3, (x) => (x.sec === item.sec ? 1 : 0));
       explain = '<b lang="ja">' + esc(item.ch) + "</b> = " + esc(label(item));
       say = item.ch;
+    } else if (t === "on" || t === "kun") {
+      const key = t === "on" ? (x) => x.on : (x) => x.kun;
+      const label = t === "on" ? "음독 (音読み · 가타카나)" : "훈독 (訓読み · 히라가나)";
+      prompt = '<div class="q-big" lang="ja">' + esc(item.char) + '</div><div class="q-ask">이 한자의 <b>' + label + "</b>은?</div>";
+      answer = key(item);
+      const len = answer.length;
+      opts = distractors(t === "on" ? KANJI : KANJI.filter(hasKun), item, key, 3,
+        (x) => (Math.abs(key(x).length - len) <= 1 ? 1 : 0) + (x.day === item.day ? 1 : 0));
+      optLang = "ja";
+      explain = '<b lang="ja">' + esc(item.char) + "</b> " + esc(item.mean) + '<br />음독: <span lang="ja">' + esc(item.on) + "</span> / 훈독: <span lang=\"ja\">" + esc(item.kun) + "</span><br />" +
+        item.ex.map((e) => '<span lang="ja">' + esc(e.w) + "(" + esc(e.r) + ")</span> " + esc(e.m)).join(" · ");
+      say = t === "on" ? item.on.split("・")[0] : item.kun.split("・")[0].replace(/[()]/g, "");
     } else if (t === "kanji") {
       prompt = '<div class="q-big" lang="ja">' + esc(item.char) + '</div><div class="q-ask">이 한자의 뜻(훈음)은?</div>';
       answer = item.mean;
@@ -880,7 +900,7 @@
     return { item, t, prompt, answer, options, explain, say, optLang };
   }
 
-  const TYPE_LABEL = { kana: "가나", kanji: "한자", reading: "읽기", meaning: "뜻", reverse: "단어", grammar: "문법" };
+  const TYPE_LABEL = { kana: "가나", kanji: "한자", on: "음독", kun: "훈독", reading: "읽기", meaning: "뜻", reverse: "단어", grammar: "문법" };
 
   function startQuiz(opts) {
     const type = opts.type || getSeg("quiz-type");
