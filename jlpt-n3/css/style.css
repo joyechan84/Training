@@ -577,3 +577,10 @@ button.vword { border: 0; background: none; padding: 0; text-align: left; cursor
 .script-ch { margin-top: 8px; font-size: 15px; line-height: 2; }
 .script-ch .ans { color: var(--ok); font-weight: 700; }
 body.no-furi .script rt, body.no-furi .listen-opts rt, body.no-furi .listen-sit rt { visibility: hidden; }
+
+/* 문법 듣기 */
+.ghead .gplay { margin-left: auto; margin-right: 8px; }
+.gexs li.speaking { background: var(--accent-soft); border-radius: 8px; }
+.q-card [data-blanksay] { margin-top: 10px; }
+td.say-cell { cursor: pointer; }
+td.say-cell:hover { color: var(--accent); }

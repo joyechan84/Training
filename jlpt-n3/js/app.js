@@ -323,6 +323,7 @@
   }
   function stopSpeech() {
     speakToken++;
+    try { if (gplaying) stopGPlay(); } catch (e) { /* 초기화 전 */ }
     if (canSpeak) try { speechSynthesis.cancel(); } catch (e) { /* 무시 */ }
   }
   function speak(text) {
@@ -345,6 +346,7 @@
       if (i >= parts.length) { hooks && hooks.onDone && hooks.onDone(); return; }
       const p = parts[i++];
       hooks && hooks.onLine && hooks.onLine(p.idx);
+      if (p.role === "pause") { setTimeout(next, 900); return; }
       const u = makeUtterance(p.text, p.role);
       let done = false;
       const go = () => { if (done) return; done = true; setTimeout(next, p.role === "gap" ? 0 : 350); };
@@ -939,21 +941,57 @@
     const hide = $("grammar-hide").checked;
     $("grammar-count").textContent = items.length + "개";
     $("grammar-list").innerHTML = items.map((g) =>
-      '<article class="grow"><div class="ghead"><span class="gpat" lang="ja">' + esc(g.pat) + '</span><span class="day-tag">Day ' + g.day + "</span></div>" +
+      '<article class="grow" data-gid="' + g.id + '"><div class="ghead"><span class="gpat" lang="ja">' + esc(g.pat) + "</span>" +
+      (canSpeak ? '<button type="button" class="ghost-btn small gplay" data-gplay="' + g.id + '">▶ 예문 3개 듣기</button>' : "") +
+      '<span class="day-tag">Day ' + g.day + "</span></div>" +
       '<div class="gmean">' + esc(g.mean) + "</div>" +
       '<div class="gconn">접속: <span lang="ja">' + esc(g.conn) + "</span></div>" +
       '<ol class="gexs">' + g.exs.map((e) =>
-        '<li><div class="gex" lang="ja">' + ruby(e.ex, true) + speakBtn(speechText(e.ex)) + "</div>" +
+        '<li><div class="gex" lang="ja">' + ruby(e.ex, true) + speakBtn(plain(e.ex)) + "</div>" +
         '<div class="gko ' + (hide ? "reveal" : "") + '"><span>' + esc(e.ko) + "</span></div></li>").join("") + "</ol>" +
       '<div class="card-actions">' + knownBtn(g.id) + "</div></article>"
     ).join("") + doneFooter("grammar", "g", "문법");
   }
+  // 문법: 예문 3개 이어 듣기 (읽는 문장 강조), 퀴즈: 빈칸을 비우고 문장 듣기
+  let gplaying = null;
+  function stopGPlay() {
+    if (!gplaying) return;
+    const b = document.querySelector('[data-gplay="' + gplaying + '"]');
+    if (b) b.textContent = "▶ 예문 3개 듣기";
+    document.querySelectorAll(".gexs li.speaking").forEach((li) => li.classList.remove("speaking"));
+    gplaying = null;
+  }
+  document.addEventListener("click", (e) => {
+    const gb = e.target.closest("[data-gplay]");
+    if (gb) {
+      const id = gb.dataset.gplay;
+      const was = gplaying === id;
+      stopSpeech();
+      stopGPlay();
+      if (was) return;
+      const g = BY_ID[id];
+      const lis = gb.closest(".grow").querySelectorAll(".gexs li");
+      speakSequence(g.exs.map((x) => ({ text: plain(x.ex), role: "N" })), {
+        onLine: (i) => lis.forEach((li, k) => li.classList.toggle("speaking", k === i)),
+        onDone: () => { if (gplaying === id) stopGPlay(); },
+      });
+      gplaying = id; // speakSequence 가 이전 재생을 멈춘 뒤에 표시
+      gb.textContent = "■ 정지";
+      return;
+    }
+    const bs = e.target.closest("[data-blanksay]");
+    if (bs) {
+      const [a, b] = JSON.parse(bs.dataset.blanksay);
+      speakSequence([{ text: a, role: "N" }, { text: "-", role: "pause" }, { text: b, role: "N" }].filter((x) => x.text.replace(/[。、？！?!\s]/g, "")));
+    }
+  });
+
   function renderVerbTable() {
     const T = VERB_TABLE;
     let h = "<h4>동사 3그룹</h4><table class=\"mini-table\"><tr><th>그룹</th><th>구별법</th><th>예</th></tr>" +
       T.groups.map((r) => "<tr><td>" + esc(r[0]) + "</td><td>" + esc(r[1]) + '</td><td lang="ja">' + esc(r[2]) + "</td></tr>").join("") + "</table>";
     h += '<h4>활용표</h4><div class="table-scroll"><table class="mini-table"><tr><th>활용</th><th>書く(1)</th><th>飲む(1)</th><th>食べる(2)</th><th>する(3)</th><th>来る(3)</th></tr>' +
-      T.forms.map((r) => "<tr><td>" + esc(r[0]) + "</td>" + r.slice(1).map((c) => '<td lang="ja">' + esc(c) + "</td>").join("") + "</tr>").join("") + "</table></div>";
+      T.forms.map((r) => "<tr><td>" + esc(r[0]) + "</td>" + r.slice(1).map((c) => '<td lang="ja" class="say-cell" data-say="' + esc((c.match(/\((.+)\)/) || [0, c])[1]) + '">' + esc(c) + "</td>").join("") + "</tr>").join("") + "</table></div>";
     h += "<h4>1그룹 て형 만드는 법 (가장 중요!)</h4><table class=\"mini-table\">" +
       T.te.map((r) => '<tr><td lang="ja">' + esc(r[0]) + '</td><td lang="ja">' + esc(r[1]) + "</td></tr>").join("") + "</table>" +
       "<p>た형은 て형의 て→た, で→だ 로 바꾸면 끝! (書いて→書いた, 飲んで→飲んだ)</p>";
@@ -1109,6 +1147,7 @@
       // 예문 3개 중 하나를 무작위로 골라 출제
       const ex = item.exs[Math.floor(Math.random() * item.exs.length)];
       prompt = '<div class="q-sent" lang="ja">' + ruby(ex.before) + '<span class="q-blank">（　　）</span>' + ruby(ex.after) + "</div>" +
+        (canSpeak ? '<button type="button" class="ghost-btn small" data-blanksay="' + esc(JSON.stringify([plain(ex.before), plain(ex.after)])) + '">🔊 문장 듣기 (빈칸은 쉬고 읽어요)</button>' : "") +
         '<div class="q-ask">빈칸에 들어갈 알맞은 표현은?</div><div class="q-hint reveal"><span>💬 ' + esc(ex.ko) + "</span></div>";
       answer = ex.blank;
       const seen = new Set([plain(answer)]);
@@ -1123,7 +1162,7 @@
       }
       optLang = "ja";
       explain = '<b lang="ja">' + esc(item.pat) + "</b> — " + esc(item.mean) + '<br /><span lang="ja">' + ruby(ex.ex, true) + "</span><br />" + esc(ex.ko);
-      say = speechText(ex.ex);
+      say = plain(ex.ex);
     }
     const options = shuffle([answer].concat(opts));
     return { item, t, prompt, answer, options, explain, say, optLang };
@@ -1256,7 +1295,7 @@
       else if (id[0] === "v") body = '<span class="wtag">단어</span><b class="wbig" lang="ja">' + rubyWord(x.word, x.read) + "</b> " + esc(x.mean) + hanjaLine(x.word);
       else body = '<span class="wtag">문법</span><b lang="ja">' + esc(x.pat) + "</b> " + esc(x.mean) + '<div class="gex" lang="ja">' + ruby(x.ex, true) + "</div><div class=\"gko\">" + esc(x.ko) + "</div>";
       return '<div class="wrow"><div class="wbody">' + body + '</div><div class="wact"><span class="wcnt">×' + wrong[id] + "</span>" +
-        speakBtn(id[0] === "k" ? x.ex[0].r : id[0] === "v" ? (x.read ? x.read.split("・")[0] : x.word) : speechText(x.ex)) +
+        speakBtn(id[0] === "k" ? x.ex[0].r : id[0] === "v" ? (x.read ? x.read.split("・")[0] : x.word) : plain(x.ex)) +
         '<button type="button" class="icon-btn" data-unwrong="' + id + '" title="오답노트에서 빼기">✕</button></div></div>';
     }).join("");
   }
