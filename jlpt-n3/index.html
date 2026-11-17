@@ -18,6 +18,7 @@
     </div>
     <nav class="tabs" id="tabs">
       <button class="tab-btn" data-view="plan" type="button">📅 계획</button>
+      <button class="tab-btn" data-view="listen" type="button">🎧 청해</button>
       <button class="tab-btn" data-view="kana" type="button">あ 가나</button>
       <button class="tab-btn" data-view="kanji" type="button">漢 한자</button>
       <button class="tab-btn" data-view="vocab" type="button">📖 단어</button>
@@ -39,6 +40,11 @@
         <div class="hero-stats" id="hero-stats"></div>
       </div>
       <p class="sync-note" id="sync-note"></p>
+      <div class="audio-box">
+        <div class="voice-note"></div>
+        <div class="audio-row"><span class="field-label inline">🔊 읽기 속도</span><span id="plan-rate"></span>
+          <button type="button" class="ghost-btn small" data-say="こんにちは。日本語能力試験、がんばりましょう。">음성 테스트</button></div>
+      </div>
       <div class="settings-row">
         <label>시작일 <input type="date" id="start-date" /></label>
         <label>시험일 <input type="date" id="exam-date" /></label>
@@ -64,11 +70,16 @@
             <li><b>1주차</b>: 동사 활용(て형·ない형·た형)을 확실히. 이게 안 되면 문법이 안 보여요.</li>
             <li><b>2~3주차</b>: 하루 한자 10 + 단어 20 + 문법 5. 매일 퀴즈로 확인하고 틀린 건 오답노트로.</li>
             <li><b>4주차</b>: 새로운 것보다 <b>오답노트 반복</b>. 기출/모의고사 1회 이상 풀어보기.</li>
-            <li><b>청해</b>는 이 앱 밖에서: 매일 15분 일본어 음성(뉴스·애니·유튜브) 듣기 추천.</li>
+            <li><b>청해</b>: 🎧 청해 탭에서 하루 2~3문제 + 틀린 문제는 대본 보며 따라 읽기. 여유가 되면 일본어 음성(뉴스·유튜브)도 매일 15분.</li>
             <li>🔊 버튼으로 발음을 들으며 소리 내어 읽으면 기억이 오래가요.</li>
           </ul>
         </div>
       </details>
+    </section>
+
+    <!-- 청해 -->
+    <section id="view-listen" class="view">
+      <div id="listen-root"></div>
     </section>
 
     <!-- 가나 표 -->
@@ -202,6 +213,7 @@
   <div id="toast" class="toast" hidden></div>
 
   <script src="js/data-kana.js"></script>
+  <script src="js/data-listening.js"></script>
   <script src="js/data-kanji.js"></script>
   <script src="js/data-vocab.js"></script>
   <script src="js/data-hanja.js"></script>

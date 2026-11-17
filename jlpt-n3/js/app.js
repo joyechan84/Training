@@ -68,11 +68,12 @@
   let tasks = {}; // { "3": { k:true, v:true, g:false, q:true } }
   const known = new Set(); // "k12", "v40", "g3"
   let wrong = {}; // { id: 틀린 횟수 }
+  let listened = {}; // 청해 { "L3": 1(정답) | 2(오답) }
 
   // ---------- 진도 기록 (항목마다 [값, 수정시각]) ----------
   // 기기 여러 대에서 따로 학습해도, 항목별로 더 나중에 바꾼 쪽을 남겨 합친다.
   function freshRec() {
-    return { v: 2, settings: {}, tasks: {}, known: {}, wrong: {} };
+    return { v: 2, settings: {}, tasks: {}, known: {}, wrong: {}, listen: {} };
   }
   let rec = Object.assign(freshRec(), store.get("rec", null) || {});
   if (!store.get("rec", null)) {
@@ -100,6 +101,8 @@
     Object.keys(rec.known).forEach((id) => rec.known[id][0] && known.add(id));
     wrong = {};
     Object.keys(rec.wrong).forEach((id) => rec.wrong[id][0] > 0 && (wrong[id] = rec.wrong[id][0]));
+    listened = {};
+    Object.keys(rec.listen || {}).forEach((id) => rec.listen[id][0] && (listened[id] = rec.listen[id][0]));
   }
   // 현재 화면 상태와 기록을 비교해 바뀐 항목만 시각을 찍는다
   function diffInto(section, current, empty) {
@@ -120,7 +123,7 @@
     scheduleRemote();
   }
   function saveSettings() {
-    persist(diffInto("settings", { start: settings.start, exam: settings.exam, furigana: settings.furigana }, null));
+    persist(diffInto("settings", { start: settings.start, exam: settings.exam, furigana: settings.furigana, rate: settings.rate || 1 }, null));
   }
   function saveTasks() {
     const flat = {};
@@ -132,12 +135,15 @@
     known.forEach((id) => (cur[id] = 1));
     persist(diffInto("known", cur, 0));
   }
+  function saveListen() {
+    persist(diffInto("listen", Object.assign({}, listened), 0));
+  }
   function saveWrong() {
     persist(diffInto("wrong", Object.assign({}, wrong), 0));
   }
   function mergeRec(a, b) {
     const out = freshRec();
-    ["settings", "tasks", "known", "wrong"].forEach((s) => {
+    ["settings", "tasks", "known", "wrong", "listen"].forEach((s) => {
       const A = (a && a[s]) || {}, B = (b && b[s]) || {};
       new Set(Object.keys(A).concat(Object.keys(B))).forEach((k) => {
         const x = A[k], y = B[k];
@@ -281,27 +287,74 @@
   }
 
   // ---------- 음성 (TTS) ----------
-  const canSpeak = "speechSynthesis" in window;
-  let jaVoice = null;
+  // 브라우저에 내장된 일본어 음성으로 읽어 준다. 청해 대화는 남·여 목소리를 나눠 읽는다.
+  const canSpeak = "speechSynthesis" in window && typeof SpeechSynthesisUtterance !== "undefined";
+  let jaVoices = [];
+  const MALE = /otoya|ichiro|keita|daichi|hattori|takumi|kenji|naoki|male|男/i;
+  const FEMALE = /kyoko|haruka|ayumi|nanami|o-ren|sayaka|mizuki|female|女/i;
+  const voice = { N: null, M: null, F: null };
   function pickVoice() {
     if (!canSpeak) return;
-    const vs = speechSynthesis.getVoices();
-    jaVoice = vs.find((v) => /ja[-_]JP/i.test(v.lang)) || vs.find((v) => /^ja/i.test(v.lang)) || null;
+    jaVoices = speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
+    const m = jaVoices.find((v) => MALE.test(v.name));
+    const f = jaVoices.find((v) => FEMALE.test(v.name));
+    const first = jaVoices[0] || null;
+    voice.F = f || first;
+    voice.M = m || jaVoices.find((v) => v !== voice.F) || first;
+    voice.N = voice.F;
+    updateVoiceNote();
   }
-  if (canSpeak) {
-    pickVoice();
-    speechSynthesis.onvoiceschanged = pickVoice;
+  // 목소리가 하나뿐이면 높낮이로 남녀를 구분
+  function pitchFor(role) {
+    if (voice.M && voice.F && voice.M !== voice.F) return 1;
+    return role === "M" ? 0.75 : role === "F" ? 1.2 : 1;
+  }
+  const speechRate = () => 0.9 * (Number(settings.rate) || 1);
+  let speakToken = 0;
+  const liveUtterances = []; // 일부 브라우저에서 끝 이벤트가 사라지지 않도록 참조 유지
+  function makeUtterance(text, role) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "ja-JP";
+    u.rate = speechRate();
+    u.pitch = pitchFor(role || "N");
+    const v = voice[role || "N"];
+    if (v) u.voice = v;
+    return u;
+  }
+  function stopSpeech() {
+    speakToken++;
+    if (canSpeak) try { speechSynthesis.cancel(); } catch (e) { /* 무시 */ }
   }
   function speak(text) {
     if (!canSpeak) { toast("이 브라우저는 음성을 지원하지 않아요"); return; }
-    try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = "ja-JP";
-      u.rate = 0.85;
-      if (jaVoice) u.voice = jaVoice;
-      speechSynthesis.speak(u);
-    } catch (e) { /* 무시 */ }
+    stopSpeech();
+    try { speechSynthesis.speak(makeUtterance(text, "N")); } catch (e) { /* 무시 */ }
+  }
+  // [{text, role}] 를 차례로 읽는다. 문장이 길면 。 단위로 나눠 끊김을 막는다.
+  function speakSequence(items, hooks) {
+    if (!canSpeak) { toast("이 브라우저는 음성을 지원하지 않아요"); return; }
+    stopSpeech();
+    const token = speakToken;
+    const parts = [];
+    items.forEach((it, idx) => {
+      String(it.text).split(/(?<=[。？！?!])/).filter((t) => t.trim()).forEach((t) => parts.push({ text: t, role: it.role, idx }));
+    });
+    let i = 0;
+    const next = () => {
+      if (token !== speakToken) return;
+      if (i >= parts.length) { hooks && hooks.onDone && hooks.onDone(); return; }
+      const p = parts[i++];
+      hooks && hooks.onLine && hooks.onLine(p.idx);
+      const u = makeUtterance(p.text, p.role);
+      let done = false;
+      const go = () => { if (done) return; done = true; setTimeout(next, p.role === "gap" ? 0 : 350); };
+      u.onend = go;
+      u.onerror = go;
+      liveUtterances.push(u);
+      if (liveUtterances.length > 50) liveUtterances.shift();
+      try { speechSynthesis.speak(u); } catch (e) { go(); }
+    };
+    next();
   }
   function speakBtn(text) {
     if (!canSpeak) return "";
@@ -311,6 +364,29 @@
     const b = e.target.closest("[data-say]");
     if (b) { e.stopPropagation(); speak(b.getAttribute("data-say")); }
   });
+  function updateVoiceNote() {
+    document.querySelectorAll(".voice-note").forEach((el) => setVoiceNote(el));
+  }
+  function setVoiceNote(el) {
+    if (!canSpeak) {
+      el.textContent = "⚠ 이 브라우저는 음성 읽기를 지원하지 않아요. Chrome·Safari 최신 버전에서 열어 주세요.";
+      el.dataset.state = "error";
+    } else if (!jaVoices.length) {
+      el.innerHTML = "⚠ 이 기기에서 일본어 음성을 찾지 못했어요. 소리가 안 나거나 어색하면 일본어 음성을 설치해 주세요.<br />" +
+        "· iPhone/iPad: 설정 → 손쉬운 사용 → 읽기 및 말하기 → 음성 → 일본어<br />" +
+        "· Android: 설정 → 텍스트 음성 변환(TTS) → Google 음성 엔진 → 언어: 일본어 데이터 설치<br />" +
+        "· Windows: 설정 → 시간 및 언어 → 음성 → 음성 추가 → 일본어";
+      el.dataset.state = "error";
+    } else {
+      el.textContent = "🔊 일본어 음성 " + jaVoices.length + "개 사용 가능" + (voice.M !== voice.F ? " · 청해는 남·여 목소리로 읽어요" : " · 청해 남녀는 목소리 높낮이로 구분해요");
+      el.dataset.state = "ok";
+    }
+  }
+  if (canSpeak) {
+    pickVoice();
+    speechSynthesis.onvoiceschanged = pickVoice;
+    setTimeout(pickVoice, 1000);
+  }
 
   // ---------- 날짜 / Day 계산 ----------
   function todayDay() {
@@ -333,12 +409,14 @@
   }
 
   // ---------- 탭 / 라우팅 ----------
-  const VIEWS = ["plan", "kana", "kanji", "vocab", "grammar", "quiz", "wrong"];
+  const VIEWS = ["plan", "listen", "kana", "kanji", "vocab", "grammar", "quiz", "wrong"];
   function show(view) {
     if (!VIEWS.includes(view)) view = "plan";
     document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + view));
     document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
     if (view === "plan") renderPlan();
+    if (view !== "listen") stopSpeech();
+    if (view === "listen") renderListen();
     if (view === "kana") renderKana();
     if (view === "kanji") renderKanji();
     if (view === "vocab") renderVocab();
@@ -402,6 +480,8 @@
 
   // ---------- 계획 화면 ----------
   function renderPlan() {
+    $("plan-rate").innerHTML = rateSeg();
+    updateVoiceNote();
     $("start-date").value = settings.start;
     $("exam-date").value = settings.exam;
     const now = new Date();
@@ -417,6 +497,7 @@
     $("hero-stats").innerHTML =
       stat("한자", knownK, KANJI.length) + stat("단어", knownV, VOCAB.length) +
       stat("문법", knownG, GRAMMAR.length) +
+      '<div class="stat"><div class="stat-num">' + Object.keys(listened).filter((id) => listened[id] === 1).length + "<small>/" + LISTEN.length + '</small></div><div class="stat-label">청해 정답</div></div>' +
       '<div class="stat"><div class="stat-num">' + Object.keys(wrong).length + '</div><div class="stat-label">오답</div></div>';
 
     let total = 0, done = 0;
@@ -564,6 +645,154 @@
     show(location.hash.slice(1) || "plan");
   }
 
+  // ---------- 청해 ----------
+  const LISTEN = (typeof LISTENING_DATA !== "undefined" ? LISTENING_DATA : []).map((p, i) => Object.assign({ id: "L" + (i + 1), no: i + 1 }, p));
+  const LTYPE = typeof LISTENING_TYPES !== "undefined" ? LISTENING_TYPES : {};
+  let listenCur = null; // 지금 푸는 문제 번호(index), 목록이면 null
+  let listenFilter = "all";
+  let listenPicked = null; // 고른 보기 (null = 아직 안 풂)
+  let listenExam = store.get("listenExam", false) === true; // 실전 모드: 음성 보기 유형은 글자를 숨김
+  const ROLE = { M: "男", F: "女", N: "" };
+
+  function rateSeg() {
+    const r = Number(settings.rate) || 1;
+    return '<div class="seg small" data-rate-seg>' + [[0.8, "느리게"], [1, "보통"], [1.2, "빠르게"]].map(([v, l]) =>
+      '<button type="button" data-rate="' + v + '"' + (Math.abs(r - v) < 0.01 ? ' class="active"' : "") + ">" + l + "</button>").join("") + "</div>";
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-rate]");
+    if (!b) return;
+    settings.rate = Number(b.dataset.rate);
+    saveSettings();
+    document.querySelectorAll("[data-rate-seg] button").forEach((x) => x.classList.toggle("active", x.dataset.rate === b.dataset.rate));
+    speak("この速さで読みます。");
+  });
+
+  function audioOnlyChoices(p) { return p.t >= 3; }
+  function choiceSpeech(p) {
+    return p.ch.map((c, i) => ({ text: (i + 1) + "番。" + plain(c), role: "N" }));
+  }
+  function listenSequence(p) {
+    const N = (t) => ({ text: plain(t), role: "N" });
+    const lines = p.lines.map((l) => ({ text: plain(l[1]), role: l[0] }));
+    if (p.t === 1 || p.t === 2) return [N(p.sit), N(p.q)].concat(lines, [N(p.q)]);
+    if (p.t === 3) return [N(p.sit)].concat(lines, [N(p.q)], choiceSpeech(p));
+    if (p.t === 4) return [N(p.sit)].concat(choiceSpeech(p));
+    return lines.concat(choiceSpeech(p));
+  }
+  function playListen() {
+    const p = LISTEN[listenCur];
+    const st = $("listen-status");
+    const btn = $("listen-play");
+    btn.textContent = "■ 정지";
+    btn.dataset.playing = "1";
+    if (st) st.textContent = "듣는 중…";
+    speakSequence(listenSequence(p), {
+      onDone: () => {
+        btn.textContent = "▶ 다시 듣기";
+        btn.dataset.playing = "";
+        if (st) st.textContent = listenPicked === null ? "답을 골라 보세요." : "";
+      },
+    });
+  }
+
+  function renderListen() {
+    const root = $("listen-root");
+    if (listenCur === null) {
+      const solved = LISTEN.filter((p) => listened[p.id] === 1).length;
+      let h = '<div class="listen-top"><div class="voice-note"></div>' +
+        '<div class="toolbar sub"><span class="field-label inline">읽기 속도</span>' + rateSeg() +
+        '<label class="toggle"><input type="checkbox" id="listen-exam"' + (listenExam ? " checked" : "") + " /> 실전 모드 (음성 보기는 글자 숨김)</label></div>" +
+        '<div class="seg" id="listen-filter">' + [["all", "전체"]].concat([1, 2, 3, 4, 5].map((t) => [String(t), LTYPE[t][0]])).map(([v, l]) =>
+          '<button type="button" data-v="' + v + '"' + (listenFilter === v ? ' class="active"' : "") + ">" + l + "</button>").join("") +
+        '</div><p class="hint">정답 ' + solved + " / " + LISTEN.length + "문제 · 실제 시험처럼 대본을 보지 말고 먼저 들은 뒤, 풀고 나서 대본과 해석으로 복습하세요.</p></div>";
+      [1, 2, 3, 4, 5].forEach((t) => {
+        if (listenFilter !== "all" && listenFilter !== String(t)) return;
+        const ps = LISTEN.filter((p) => p.t === t);
+        h += '<section class="listen-group"><h3>' + t + ". " + LTYPE[t][0] + ' <span lang="ja" class="muted">' + LTYPE[t][1] + '</span></h3><p class="hint">' + esc(LTYPE[t][2]) + '</p><div class="listen-grid">' +
+          ps.map((p) => {
+            const st = listened[p.id];
+            return '<button type="button" class="listen-card' + (st === 1 ? " ok" : st === 2 ? " ng" : "") + '" data-listen="' + LISTEN.indexOf(p) + '">' +
+              '<span class="lc-no">문제 ' + p.no + '</span><span class="lc-sit">' + esc(p.sitKo || p.lines[0][2]) + '</span><span class="lc-st">' +
+              (st === 1 ? "⭕ 정답" : st === 2 ? "❌ 오답" : "안 풂") + "</span></button>";
+          }).join("") + "</div></section>";
+      });
+      root.innerHTML = h;
+      updateVoiceNote();
+      return;
+    }
+    const p = LISTEN[listenCur];
+    const answered = listenPicked !== null;
+    const hideText = listenExam && audioOnlyChoices(p) && !answered;
+    let h = '<div class="listen-head"><button type="button" class="ghost-btn small" id="listen-back">‹ 목록</button>' +
+      '<span class="q-type">' + LTYPE[p.t][0] + '</span><span class="muted">문제 ' + p.no + " / " + LISTEN.length + "</span></div>" +
+      '<p class="hint">' + esc(LTYPE[p.t][2]) + "</p>" +
+      '<div class="q-card listen-card-main">' +
+      (p.t === 4 ? '<div class="listen-sit" lang="ja">' + ruby(p.sit) + '</div><div class="hint">' + esc(p.sitKo) + "</div>" : "") +
+      '<button type="button" class="primary-btn listen-play" id="listen-play">▶ 듣기</button>' +
+      '<div class="hint" id="listen-status">' + (answered ? "" : "▶ 버튼을 눌러 들어 보세요.") + "</div>" + rateSeg() + "</div>" +
+      '<div class="q-options listen-opts">' + p.ch.map((c, i) => {
+        let cls = "q-opt";
+        if (answered && i === p.a) cls += " correct";
+        else if (answered && i === listenPicked) cls += " wrong";
+        return '<button type="button" class="' + cls + '" data-lopt="' + i + '"' + (answered ? " disabled" : "") + ' lang="ja"><span class="q-n">' + (i + 1) + "</span>" +
+          (hideText ? '<span class="muted">（음성으로 들은 ' + (i + 1) + "번）</span>" : "<span>" + ruby(c) + "</span>") + "</button>";
+      }).join("") + "</div>";
+    if (answered) {
+      const ok = listenPicked === p.a;
+      h += '<div class="feedback ' + (ok ? "ok" : "ng") + '"><div class="fb-title">' + (ok ? "⭕ 정답!" : "❌ 오답 — 정답은 " + (p.a + 1) + "번") + '</div><div class="fb-body">' + esc(p.exp) + "</div></div>";
+      h += '<section class="script"><h3>📄 대본 · 해석</h3>';
+      if (p.sit && p.t !== 4) h += scriptLine("N", p.sit, p.sitKo);
+      p.lines.forEach((l) => (h += scriptLine(l[0], l[1], l[2])));
+      if (p.q) h += scriptLine("N", p.q, p.qKo, "질문");
+      h += '<div class="script-ch">' + p.ch.map((c, i) => '<div class="' + (i === p.a ? "ans" : "") + '"><span lang="ja">' + (i + 1) + ". " + ruby(c) + "</span>" + speakBtn(plain(c)) + "</div>").join("") + "</div></section>";
+      h += '<div class="result-actions">' + (listenCur > 0 ? '<button type="button" class="ghost-btn" data-listen="' + (listenCur - 1) + '">‹ 이전 문제</button>' : "") +
+        '<button type="button" class="ghost-btn" id="listen-retry">다시 풀기</button>' +
+        (listenCur < LISTEN.length - 1 ? '<button type="button" class="primary-btn" data-listen="' + (listenCur + 1) + '">다음 문제 ›</button>' : '<button type="button" class="primary-btn" id="listen-back2">목록으로</button>') + "</div>";
+    }
+    root.innerHTML = h;
+  }
+  function scriptLine(role, jp, ko, label) {
+    const who = label || ROLE[role] || "해설";
+    return '<div class="sline sline-' + role + '"><span class="who">' + who + '</span><div class="sbody"><div lang="ja">' + ruby(jp) + speakBtn(plain(jp)) + '</div><div class="sko">' + esc(ko || "") + "</div></div></div>";
+  }
+  $("view-listen").addEventListener("click", (e) => {
+    const card = e.target.closest("[data-listen]");
+    if (card) {
+      stopSpeech();
+      listenCur = Number(card.dataset.listen);
+      listenPicked = null;
+      renderListen();
+      window.scrollTo(0, 0);
+      return;
+    }
+    const f = e.target.closest("#listen-filter button");
+    if (f) { listenFilter = f.dataset.v; renderListen(); return; }
+    const id = e.target.id;
+    if (id === "listen-back" || id === "listen-back2") { stopSpeech(); listenCur = null; renderListen(); return; }
+    if (id === "listen-retry") { stopSpeech(); listenPicked = null; renderListen(); return; }
+    if (id === "listen-play") {
+      if (e.target.dataset.playing) { stopSpeech(); e.target.textContent = "▶ 다시 듣기"; e.target.dataset.playing = ""; return; }
+      playListen();
+      return;
+    }
+    const o = e.target.closest("[data-lopt]");
+    if (o && listenPicked === null) {
+      stopSpeech();
+      listenPicked = Number(o.dataset.lopt);
+      const p = LISTEN[listenCur];
+      listened[p.id] = listenPicked === p.a ? 1 : 2;
+      saveListen();
+      renderListen();
+    }
+  });
+  $("view-listen").addEventListener("change", (e) => {
+    if (e.target.id === "listen-exam") {
+      listenExam = e.target.checked;
+      store.set("listenExam", listenExam);
+    }
+  });
+
   // ---------- 가나 표 ----------
   const toKata = (s) => s.replace(/[\u3041-\u3096]/g, (c) => String.fromCharCode(c.charCodeAt(0) + 0x60));
   function kanaCell(raw, mode) {
@@ -633,7 +862,7 @@
     $("kanji-count").textContent = items.length + "자";
     $("kanji-list").innerHTML = items.map((k) =>
       '<article class="kcard">' +
-      '<div class="kcard-top"><div class="kchar" lang="ja">' + esc(k.char) + "</div>" +
+      '<div class="kcard-top"><button type="button" class="kchar" lang="ja" data-say="' + esc(k.on.split("・")[0] + "、" + (k.kun !== "-" ? k.kun.split("・")[0].replace(/[()]/g, "") : "")) + '" title="음독·훈독 듣기">' + esc(k.char) + "</button>" +
       '<div class="kinfo"><div class="kmean ' + (hide ? "reveal" : "") + '"><span>' + esc(k.mean) + "</span></div>" +
       '<div class="kread ' + (hide ? "reveal" : "") + '"><span><b>음</b> <span lang="ja">' + esc(k.on) + "</span><br /><b>훈</b> <span lang=\"ja\">" + esc(k.kun) + "</span></span></div></div></div>" +
       '<ul class="kex">' + k.ex.map((e) =>
@@ -696,7 +925,7 @@
     const hideR = $("vocab-hide-reading").checked;
     $("vocab-count").textContent = items.length + "개";
     $("vocab-list").innerHTML = items.map((v) =>
-      '<article class="vrow"><div class="vmain"><div class="vword" lang="ja">' + esc(v.word) + "</div>" +
+      '<article class="vrow"><div class="vmain"><button type="button" class="vword" lang="ja" data-say="' + esc(v.read ? v.read.split("・")[0] : v.word) + '" title="발음 듣기">' + esc(v.word) + "</button>" +
       (v.read ? '<div class="vread ' + (hideR ? "reveal" : "") + '" lang="ja"><span>' + esc(v.read) + "</span></div>" : "") +
       (hanjaOn ? hanjaLine(v.word, hide) : "") +
       '</div><div class="vmean ' + (hide ? "reveal" : "") + '"><span>' + esc(v.mean) + "</span></div>" +
@@ -929,7 +1158,7 @@
       '<div class="q-card">' + q.prompt + "</div>" +
       '<div class="q-options">' + q.options.map((o, idx) =>
         '<button type="button" class="q-opt" data-idx="' + idx + '"' + (q.optLang ? ' lang="ja"' : "") + "><span class=\"q-n\">" + (idx + 1) + "</span>" +
-        (q.t === "grammar" ? ruby(o) : esc(o)) + "</button>").join("") + "</div>" +
+        "<span>" + (q.t === "grammar" ? ruby(o) : esc(o)) + "</span></button>").join("") + "</div>" +
       '<div id="q-feedback"></div>';
   }
 
@@ -1070,6 +1299,7 @@
     else if (v === "vocab") renderVocab();
     else if (v === "grammar") renderGrammar();
     else if (v === "wrong") renderWrong();
+    else if (v === "listen" && !listenCur) renderListen();
   }
 
   // ---------- 시작 ----------
