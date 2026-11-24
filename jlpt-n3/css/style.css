@@ -584,3 +584,41 @@ body.no-furi .script rt, body.no-furi .listen-opts rt, body.no-furi .listen-sit 
 .q-card [data-blanksay] { margin-top: 10px; }
 td.say-cell { cursor: pointer; }
 td.say-cell:hover { color: var(--accent); }
+
+/* ---------- 12일 프로그램 ---------- */
+.routine { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; margin: 12px 0; box-shadow: var(--shadow); }
+.routine h2 { font-size: 16px; margin: 0 0 10px; }
+.routine-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.rt { border-radius: 12px; padding: 10px 12px; background: var(--surface-2); border-left: 4px solid var(--muted); }
+.rt-read { border-left-color: var(--accent); }
+.rt-listen { border-left-color: var(--n5); }
+.rt-vocab { border-left-color: var(--n4); }
+.rt-time { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.rt-name { font-weight: 700; margin-bottom: 4px; }
+.rt-name small { font-weight: 400; color: var(--muted); }
+.rt ol { margin: 0; padding-left: 1.2em; font-size: 13px; }
+.rt li { margin: 2px 0; }
+.routine > .hint { margin: 10px 0 0; }
+.program-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.program-grid .task-list li { align-items: flex-start; }
+.program-grid .task-list label { align-items: flex-start; line-height: 1.45; }
+.program-grid .task-list input { margin-top: 2px; flex: none; }
+.program-grid .go-btn { flex: none; }
+
+/* ---------- 독해 ---------- */
+.read-day { font-size: 15px; margin: 16px 2px 8px; }
+.read-guide { margin: 0 0 6px; }
+.read-guide ol { padding-left: 1.2em; }
+.read-timerbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 8px 0; font-variant-numeric: tabular-nums; }
+.read-timerbar b { font-size: 18px; }
+.passage { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); }
+.passage h3 { margin: 0 0 8px; font-size: 18px; line-height: 2; }
+.ptext { font-size: 17px; line-height: 2.2; white-space: pre-line; }
+.passage-act { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.pko { margin-top: 10px; padding: 10px 12px; background: var(--surface-2); border-radius: 10px; font-size: 14px; line-height: 1.7; color: var(--muted); }
+.rq { margin-top: 16px; }
+.rq-q { font-size: 16px; line-height: 2; margin-bottom: 8px; }
+.day-pick { font-size: 14px; display: inline-flex; align-items: center; gap: 6px; }
+.day-pick select { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 4px 8px; }
+.lc-no small.muted, .listen-card small.muted { color: var(--muted); font-weight: 400; }
+body.no-furi .passage rt, body.no-furi .rq rt, body.no-furi .listen-card rt { visibility: hidden; }

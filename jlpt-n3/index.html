@@ -11,13 +11,14 @@
 <body>
   <header class="app-header">
     <div class="header-top">
-      <h1>JLPT N3 <span>4주 완성</span></h1>
+      <h1>JLPT N3 <span>합격 프로그램</span></h1>
       <div class="header-actions">
         <button id="furigana-btn" class="chip-btn" type="button" title="후리가나 켜기/끄기">ふりがな ON</button>
       </div>
     </div>
     <nav class="tabs" id="tabs">
       <button class="tab-btn" data-view="plan" type="button">📅 계획</button>
+      <button class="tab-btn" data-view="read" type="button">📰 독해</button>
       <button class="tab-btn" data-view="listen" type="button">🎧 청해</button>
       <button class="tab-btn" data-view="kana" type="button">あ 가나</button>
       <button class="tab-btn" data-view="kanji" type="button">漢 한자</button>
@@ -46,35 +47,66 @@
           <button type="button" class="ghost-btn small" data-say="こんにちは。日本語能力試験、がんばりましょう。">음성 테스트</button></div>
       </div>
       <div class="settings-row">
-        <label>시작일 <input type="date" id="start-date" /></label>
         <label>시험일 <input type="date" id="exam-date" /></label>
+        <span class="hint">12일 프로그램은 시험 12일 전부터 시작해요.</span>
       </div>
+
+      <section class="routine">
+        <h2>⏱ 하루 루틴 (약 3시간 10분)</h2>
+        <div class="routine-grid">
+          <div class="rt rt-read"><div class="rt-time">2:00</div><div class="rt-name">📰 독해</div>
+            <ol><li>앱 지문 2개: 시간 재고 풀기 → 해설·해석 → 🔊 듣고 소리 내어 읽기 <b>(50분)</b></li>
+            <li>문제집·기출 독해 1세트 <b>(60분)</b></li>
+            <li>모르는 단어·문법 정리 <b>(10분)</b></li></ol></div>
+          <div class="rt rt-listen"><div class="rt-time">0:30</div><div class="rt-name">🎧 청해</div>
+            <ol><li>오늘의 3문제 실전 모드로 풀기 <b>(10분)</b></li>
+            <li>틀린 문제 대본 보며 다시 듣기 → 쉐도잉 <b>(20분)</b></li></ol></div>
+          <div class="rt rt-vocab"><div class="rt-time">0:40</div><div class="rt-name">✏️ 어휘·문법 <small>(강력 권장)</small></div>
+            <ol><li>오늘 범위 한자·단어·문법 훑기 <b>(25분)</b></li>
+            <li>혼합 퀴즈 20문제 → 오답노트 <b>(15분)</b></li></ol></div>
+        </div>
+        <p class="hint">언어지식(문자·어휘·문법)도 60점 중 19점을 넘어야 과락을 피해요. 독해·청해만 하면 위험하니 40분은 꼭 챙기세요.</p>
+      </section>
+
       <div class="progress-wrap">
-        <div class="progress-label"><span>전체 진도</span><span id="overall-pct">0%</span></div>
+        <div class="progress-label"><span>12일 프로그램 진도</span><span id="overall-pct">0%</span></div>
         <div class="progress"><div class="progress-bar" id="overall-bar"></div></div>
       </div>
-      <div id="week-list"></div>
+      <div id="program"></div>
 
       <details class="info-box">
-        <summary>💡 N3 시험 구성 &amp; 공부 전략</summary>
+        <summary>🎯 합격선 전략 (95/180)</summary>
         <div class="info-content">
           <table class="mini-table">
-            <tr><th>교시</th><th>시간</th></tr>
-            <tr><td>언어지식 (문자·어휘)</td><td>30분</td></tr>
-            <tr><td>언어지식 (문법) · 독해</td><td>70분</td></tr>
-            <tr><td>청해</td><td>40분</td></tr>
+            <tr><th>파트</th><th>배점</th><th>목표</th><th>과락</th></tr>
+            <tr><td>언어지식 (문자·어휘·문법)</td><td>60</td><td>30+</td><td>19</td></tr>
+            <tr><td>독해</td><td>60</td><td>33+</td><td>19</td></tr>
+            <tr><td>청해</td><td>60</td><td>32+</td><td>19</td></tr>
           </table>
-          <p>점수: 언어지식(문자·어휘·문법) 60 + 독해 60 + 청해 60 = 180점<br />
-          합격: <b>총점 95점 이상</b> + 각 파트 <b>19점 이상</b> (과락 주의!)</p>
+          <p>세 파트를 모두 <b>절반 조금 넘게</b>만 맞혀도 합격선(95)이에요. 만점이 아니라 "과락 없이 고르게"가 목표예요.</p>
           <ul>
-            <li><b>1주차</b>: 동사 활용(て형·ない형·た형)을 확실히. 이게 안 되면 문법이 안 보여요.</li>
-            <li><b>2~3주차</b>: 하루 한자 10 + 단어 20 + 문법 5. 매일 퀴즈로 확인하고 틀린 건 오답노트로.</li>
-            <li><b>4주차</b>: 새로운 것보다 <b>오답노트 반복</b>. 기출/모의고사 1회 이상 풀어보기.</li>
-            <li><b>청해</b>: 🎧 청해 탭에서 하루 2~3문제 + 틀린 문제는 대본 보며 따라 읽기. 여유가 되면 일본어 음성(뉴스·유튜브)도 매일 15분.</li>
-            <li>🔊 버튼으로 발음을 들으며 소리 내어 읽으면 기억이 오래가요.</li>
+            <li><b>시험 시간표:</b> 언어지식(문자·어휘) 30분 → 언어지식(문법)·독해 70분 → 청해 40분</li>
+            <li><b>독해 시간 배분 (70분 중):</b> 문법 20분 → 단문 4개 15분 → 중문 2개 15분 → 장문 10분 → 정보검색 7분 → 검토 3분</li>
+            <li><b>독해 요령:</b> 질문을 먼저 읽고 본문으로 가기 · しかし/でも/ただ 뒤와 마지막 문단에 주장 · 「必ず」「すべて」처럼 단정하는 보기는 의심하기</li>
+            <li><b>정보검색:</b> 질문의 조건(요일·시간·금액·대상)에 표시 → 표에서 하나씩 지우기 · ※ 주의사항은 거의 반드시 출제</li>
+            <li><b>청해 요령:</b> 과제·포인트이해는 질문을 먼저 들려줘요 → 질문만 확실히 기억 · 정보가 바뀌는 "やっぱり・じゃあ" 뒤에 집중 · 모르는 문제는 바로 버리고 다음 문제 준비</li>
+            <li><b>마지막 이틀:</b> 새 공부보다 오답노트, 컨디션 관리, 시험장 위치·준비물(수험표·신분증·연필·지우개·시계) 확인</li>
           </ul>
         </div>
       </details>
+
+      <details class="info-box">
+        <summary>📁 이전 26일 계획 (기록 보관)</summary>
+        <div class="info-content">
+          <div class="settings-row"><label>시작일 <input type="date" id="start-date" /></label></div>
+          <div id="week-list"></div>
+        </div>
+      </details>
+    </section>
+
+    <!-- 독해 -->
+    <section id="view-read" class="view">
+      <div id="read-root"></div>
     </section>
 
     <!-- 청해 -->
@@ -214,6 +246,8 @@
 
   <script src="js/data-kana.js"></script>
   <script src="js/data-listening.js"></script>
+  <script src="js/data-listening2.js"></script>
+  <script src="js/data-reading.js"></script>
   <script src="js/data-kanji.js"></script>
   <script src="js/data-vocab.js"></script>
   <script src="js/data-hanja.js"></script>

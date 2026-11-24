@@ -411,7 +411,7 @@
   }
 
   // ---------- 탭 / 라우팅 ----------
-  const VIEWS = ["plan", "listen", "kana", "kanji", "vocab", "grammar", "quiz", "wrong"];
+  const VIEWS = ["plan", "read", "listen", "kana", "kanji", "vocab", "grammar", "quiz", "wrong"];
   function show(view) {
     if (!VIEWS.includes(view)) view = "plan";
     document.querySelectorAll(".view").forEach((v) => v.classList.toggle("active", v.id === "view-" + view));
@@ -419,6 +419,8 @@
     if (view === "plan") renderPlan();
     if (view !== "listen") stopSpeech();
     if (view === "listen") renderListen();
+    if (view === "read") renderRead();
+    if (view !== "read") timerStop();
     if (view === "kana") renderKana();
     if (view === "kanji") renderKanji();
     if (view === "vocab") renderVocab();
@@ -481,6 +483,99 @@
   }
 
   // ---------- 계획 화면 ----------
+  // ---------- 12일 합격 프로그램 (시험 12일 전 ~ 전날) ----------
+  const P_DAYS = 12;
+  function pStart() {
+    const d = parseISO(settings.exam);
+    d.setDate(d.getDate() - P_DAYS);
+    return d;
+  }
+  function pDay() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.min(Math.max(Math.floor((today - pStart()) / DAY_MS) + 1, 1), P_DAYS);
+  }
+  function pDate(d) {
+    const x = pStart();
+    x.setDate(x.getDate() + d - 1);
+    return x;
+  }
+  // 어휘·문법 범위: 24일치 내용을 11일에 나눔 (Day 12는 총복습)
+  function pRange(d) {
+    if (d > 11) return null;
+    return [Math.ceil(((d - 1) * 24) / 11) + 1, Math.ceil((d * 24) / 11)];
+  }
+  function pTasks(d) {
+    const r = pRange(d);
+    const rangeTxt = r ? "Day " + r[0] + "~" + r[1] : "";
+    if (d === 12) return [
+      ["r1", "틀린 독해 지문 다시 풀기 + 장문 1개 시간 재기 (50분)", "read"],
+      ["r2", "문제집 독해 1세트 가볍게 (40분)", null],
+      ["l", "청해 3문제 + 틀렸던 청해 다시 듣기 (30분)", "listen"],
+      ["v", "오답노트 퀴즈 + 수험표·신분증·연필 챙기기, 일찍 자기", "wrongquiz"],
+    ];
+    return [
+      ["r1", "📰 앱 독해 지문 2개 + 해설·소리 내어 읽기 (50분)", "read"],
+      ["r2", d === 11 ? "📰 실전 모의고사 독해 파트, 시간 재고 풀기 (70분)" : "📰 문제집·기출 독해 1세트 + 단어 정리 (70분)", null],
+      ["l", "🎧 청해 3문제 실전 모드 + 틀린 문제 쉐도잉 (30분)", "listen"],
+      ["v", "✏️ 한자·단어·문법 " + rangeTxt + " 훑기 + 혼합 퀴즈 (40분)", "vocabquiz"],
+    ];
+  }
+  function pTheme(d) {
+    if (d === 12) return "총정리 · 컨디션 조절 (내일 시험!)";
+    const rs = READ.filter((x) => x.day === d).map((x) => x.type);
+    return "독해 " + rs.join("·") + (d === 11 ? " · 실전 모의고사" : "");
+  }
+  function renderProgram() {
+    const t = pDay();
+    let total = 0, done = 0, h = "";
+    for (let d = 1; d <= P_DAYS; d++) {
+      const st = tasks["p" + d] || {};
+      const list = pTasks(d);
+      const n = list.filter(([k]) => st[k]).length;
+      total += list.length;
+      done += n;
+      const date = pDate(d);
+      const dateStr = date.getMonth() + 1 + "/" + date.getDate() + " (" + "일월화수목금토"[date.getDay()] + ")";
+      h += '<div class="day-card' + (d === t ? " today" : "") + (n === list.length ? " done" : "") + '"><div class="day-head"><span class="day-num">Day ' + d +
+        '</span><span class="day-date">' + dateStr + '</span></div><div class="day-theme">' + esc(pTheme(d)) + '</div><ul class="task-list">' +
+        list.map(([k, label, go]) => '<li><label><input type="checkbox" data-ptask="' + k + '" data-pday="' + d + '"' + (st[k] ? " checked" : "") + " /> " + esc(label) + "</label>" +
+          (go ? '<button type="button" class="go-btn" data-pgo="' + go + '" data-pday="' + d + '">하기 ›</button>' : "") + "</li>").join("") +
+        '</ul><div class="day-foot">' + n + "/" + list.length + (d === t ? " · 오늘" : "") + "</div></div>";
+    }
+    $("program").innerHTML = '<div class="day-grid program-grid">' + h + "</div>";
+    const pct = Math.round((done / total) * 100);
+    $("overall-pct").textContent = pct + "% (" + done + "/" + total + ")";
+    $("overall-bar").style.width = pct + "%";
+    const cur = $("program").querySelector(".day-card.today");
+    if (cur && cur.scrollIntoView && !renderPlan.scrolled) {
+      renderPlan.scrolled = true;
+      setTimeout(() => cur.scrollIntoView({ block: "center", behavior: "smooth" }), 50);
+    }
+  }
+  $("program").addEventListener("change", (e) => {
+    const cb = e.target.closest("[data-ptask]");
+    if (!cb) return;
+    setTask("p" + cb.dataset.pday, cb.dataset.ptask, cb.checked);
+    renderProgram();
+  });
+  $("program").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pgo]");
+    if (!b) return;
+    const d = Number(b.dataset.pday);
+    const g = b.dataset.pgo;
+    if (g === "read") { readCur = null; readFilter = d === 12 ? "wrong" : String(d); go("read"); }
+    else if (g === "listen") { listenCur = null; listenDay = d; go("listen"); }
+    else if (g === "vocabquiz") {
+      const r = pRange(d);
+      $("quiz-day").value = String(r[1]);
+      setSeg("quiz-range", "upto");
+      setSeg("quiz-type", "mix");
+      setSeg("quiz-count", "20");
+      go("quiz");
+    } else if (g === "wrongquiz") { $("wrong-quiz-btn").click(); }
+  });
+
   function renderPlan() {
     $("plan-rate").innerHTML = rateSeg();
     updateVoiceNote();
@@ -491,7 +586,8 @@
     const dd = Math.round((parseISO(settings.exam) - today) / DAY_MS);
     $("dday").textContent = dd > 0 ? "D-" + dd : dd === 0 ? "D-DAY 🔥" : "시험 종료";
     const t = todayDay();
-    $("today-label").textContent = "오늘은 Day " + t + " · " + DAY_THEMES[t];
+    const pd = pDay();
+    $("today-label").textContent = "12일 합격 프로그램 Day " + pd + " / " + P_DAYS + " · " + pTheme(pd);
 
     const knownK = KANJI.filter((x) => known.has(x.id)).length;
     const knownV = VOCAB.filter((x) => known.has(x.id)).length;
@@ -499,14 +595,11 @@
     $("hero-stats").innerHTML =
       stat("한자", knownK, KANJI.length) + stat("단어", knownV, VOCAB.length) +
       stat("문법", knownG, GRAMMAR.length) +
-      '<div class="stat"><div class="stat-num">' + Object.keys(listened).filter((id) => listened[id] === 1).length + "<small>/" + LISTEN.length + '</small></div><div class="stat-label">청해 정답</div></div>' +
+      '<div class="stat"><div class="stat-num">' + LISTEN.filter((p) => listened[p.id] === 1).length + "<small>/" + LISTEN.length + '</small></div><div class="stat-label">청해 정답</div></div>' +
+      '<div class="stat"><div class="stat-num">' + READ.filter((r) => readStatus(r).ok === r.qs.length).length + "<small>/" + READ.length + '</small></div><div class="stat-label">독해 지문 만점</div></div>' +
       '<div class="stat"><div class="stat-num">' + Object.keys(wrong).length + '</div><div class="stat-label">오답</div></div>';
 
-    let total = 0, done = 0;
-    for (let d = 1; d <= TOTAL_DAYS; d++) { total += taskKeys(d).length; done += dayDone(d); }
-    const pct = Math.round((done / total) * 100);
-    $("overall-pct").textContent = pct + "% (" + done + "/" + total + ")";
-    $("overall-bar").style.width = pct + "%";
+    renderProgram();
 
     const weeks = [[1, 7, "1주차 · 기초 다지기 (N5)"], [8, 14, "2주차 · N4 → N3 진입"], [15, 21, "3주차 · N3 핵심"], [22, 26, "4주차 · 마무리 & 복습"]];
     let h = "";
@@ -516,11 +609,6 @@
       h += "</div></div>";
     });
     $("week-list").innerHTML = h;
-    const cur = $("week-list").querySelector(".day-card.today");
-    if (cur && cur.scrollIntoView && !renderPlan.scrolled) {
-      renderPlan.scrolled = true;
-      setTimeout(() => cur.scrollIntoView({ block: "center", behavior: "smooth" }), 50);
-    }
   }
   function stat(label, n, total) {
     return '<div class="stat"><div class="stat-num">' + n + '<small>/' + total + '</small></div><div class="stat-label">외운 ' + label + "</div></div>";
@@ -651,6 +739,15 @@
   const LISTEN = (typeof LISTENING_DATA !== "undefined" ? LISTENING_DATA : []).map((p, i) => Object.assign({ id: "L" + (i + 1), no: i + 1 }, p));
   const LTYPE = typeof LISTENING_TYPES !== "undefined" ? LISTENING_TYPES : {};
   let listenCur = null; // 지금 푸는 문제 번호(index), 목록이면 null
+  let listenDay = 0; // 12일 프로그램 Day (0 = 전체 보기)
+  // 유형을 골고루 섞은 순서로 하루 3문제씩 배정
+  const LISTEN_DAY = {};
+  (() => {
+    const qs = [1, 2, 3, 4, 5].map((t) => LISTENING_DATA.map((p, i) => i).filter((i) => LISTENING_DATA[i].t === t));
+    const order = [];
+    while (qs.some((q) => q.length)) qs.forEach((q) => q.length && order.push(q.shift()));
+    order.forEach((idx, k) => (LISTEN_DAY[idx] = Math.floor(k / 3) + 1));
+  })();
   let listenFilter = "all";
   let listenPicked = null; // 고른 보기 (null = 아직 안 풂)
   let listenExam = store.get("listenExam", false) === true; // 실전 모드: 음성 보기 유형은 글자를 숨김
@@ -708,16 +805,20 @@
         '<div class="seg" id="listen-filter">' + [["all", "전체"]].concat([1, 2, 3, 4, 5].map((t) => [String(t), LTYPE[t][0]])).map(([v, l]) =>
           '<button type="button" data-v="' + v + '"' + (listenFilter === v ? ' class="active"' : "") + ">" + l + "</button>").join("") +
         '</div><p class="hint">정답 ' + solved + " / " + LISTEN.length + "문제 · 실제 시험처럼 대본을 보지 말고 먼저 들은 뒤, 풀고 나서 대본과 해석으로 복습하세요.</p></div>";
+      h = h.replace('<div class="seg" id="listen-filter">', '<label class="day-pick">오늘의 3문제 <select id="listen-day"><option value="0">전체 보기</option>' +
+        Array.from({ length: P_DAYS }, (_, i) => '<option value="' + (i + 1) + '"' + (listenDay === i + 1 ? " selected" : "") + ">프로그램 Day " + (i + 1) + "</option>").join("") +
+        '</select></label><div class="seg" id="listen-filter"' + (listenDay ? " hidden" : "") + ">");
+      if (listenDay) {
+        const ps = LISTEN.filter((p, i) => LISTEN_DAY[i] === listenDay);
+        h += '<section class="listen-group"><h3>Day ' + listenDay + ' 청해 3문제</h3><p class="hint">실전 모드로 한 번 듣고 풀기 → 틀린 문제는 대본을 보며 다시 듣고 문장마다 따라 말하기(쉐도잉).</p><div class="listen-grid">' +
+          ps.map((p) => listenCardHtml(p)).join("") + "</div></section>";
+      }
       [1, 2, 3, 4, 5].forEach((t) => {
+        if (listenDay) return;
         if (listenFilter !== "all" && listenFilter !== String(t)) return;
         const ps = LISTEN.filter((p) => p.t === t);
         h += '<section class="listen-group"><h3>' + t + ". " + LTYPE[t][0] + ' <span lang="ja" class="muted">' + LTYPE[t][1] + '</span></h3><p class="hint">' + esc(LTYPE[t][2]) + '</p><div class="listen-grid">' +
-          ps.map((p) => {
-            const st = listened[p.id];
-            return '<button type="button" class="listen-card' + (st === 1 ? " ok" : st === 2 ? " ng" : "") + '" data-listen="' + LISTEN.indexOf(p) + '">' +
-              '<span class="lc-no">문제 ' + p.no + '</span><span class="lc-sit">' + esc(p.sitKo || p.lines[0][2]) + '</span><span class="lc-st">' +
-              (st === 1 ? "⭕ 정답" : st === 2 ? "❌ 오답" : "안 풂") + "</span></button>";
-          }).join("") + "</div></section>";
+          ps.map((p) => listenCardHtml(p)).join("") + "</div></section>";
       });
       root.innerHTML = h;
       updateVoiceNote();
@@ -754,6 +855,12 @@
     }
     root.innerHTML = h;
   }
+  function listenCardHtml(p) {
+    const st = listened[p.id];
+    return '<button type="button" class="listen-card' + (st === 1 ? " ok" : st === 2 ? " ng" : "") + '" data-listen="' + LISTEN.indexOf(p) + '">' +
+      '<span class="lc-no">문제 ' + p.no + ' <small class="muted">' + LTYPE[p.t][0] + '</small></span><span class="lc-sit">' + esc(p.sitKo || p.lines[0][2]) + '</span><span class="lc-st">' +
+      (st === 1 ? "⭕ 정답" : st === 2 ? "❌ 오답" : "안 풂") + "</span></button>";
+  }
   function scriptLine(role, jp, ko, label) {
     const who = label || ROLE[role] || "해설";
     return '<div class="sline sline-' + role + '"><span class="who">' + who + '</span><div class="sbody"><div lang="ja">' + ruby(jp) + speakBtn(plain(jp)) + '</div><div class="sko">' + esc(ko || "") + "</div></div></div>";
@@ -789,10 +896,138 @@
     }
   });
   $("view-listen").addEventListener("change", (e) => {
+    if (e.target.id === "listen-day") { listenDay = Number(e.target.value); renderListen(); return; }
     if (e.target.id === "listen-exam") {
       listenExam = e.target.checked;
       store.set("listenExam", listenExam);
     }
+  });
+
+  // ---------- 독해 ----------
+  const READ = (typeof READING_DATA !== "undefined" ? READING_DATA : []).map((r, i) => Object.assign({ id: "R" + (i + 1), no: i + 1, day: Math.floor(i / 2) + 1 }, r));
+  const RTYPE = typeof READING_TYPES !== "undefined" ? READING_TYPES : {};
+  let readCur = null;
+  let readFilter = "all"; // "all" | "wrong" | Day 번호
+  let readPicks = [];
+  let readShowKo = false;
+  const timer = { start: 0, acc: 0, run: false, iv: null };
+  function readStatus(r) {
+    let ok = 0, ng = 0;
+    r.qs.forEach((q, i) => { const v = listened[r.id + "." + i]; if (v === 1) ok++; else if (v === 2) ng++; });
+    return { ok, ng, done: ok + ng === r.qs.length };
+  }
+  const fmt = (ms) => { const s = Math.floor(ms / 1000); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+  function timerMs() { return timer.acc + (timer.run ? Date.now() - timer.start : 0); }
+  function timerTick() { const el = $("read-timer"); if (el) el.textContent = fmt(timerMs()); }
+  function timerStart() { if (timer.run) return; timer.run = true; timer.start = Date.now(); clearInterval(timer.iv); timer.iv = setInterval(timerTick, 500); timerBtn(); }
+  function timerStop() { if (!timer.run) return; timer.acc += Date.now() - timer.start; timer.run = false; clearInterval(timer.iv); timerTick(); timerBtn(); }
+  function timerReset() { timer.run = false; timer.acc = 0; clearInterval(timer.iv); }
+  function timerBtn() { const b = $("read-timer-btn"); if (b) b.textContent = timer.run ? "⏸ 멈춤" : timer.acc ? "▶ 계속" : "▶ 시작"; }
+
+  function renderRead() {
+    const root = $("read-root");
+    if (readCur === null) {
+      const opts = '<option value="all">전체 지문</option><option value="wrong">틀린 문제가 있는 지문</option>' +
+        Array.from({ length: 11 }, (_, i) => '<option value="' + (i + 1) + '">프로그램 Day ' + (i + 1) + "</option>").join("");
+      let list = READ;
+      if (readFilter === "wrong") list = READ.filter((r) => readStatus(r).ng > 0);
+      else if (readFilter !== "all") list = READ.filter((r) => r.day === Number(readFilter));
+      const perfect = READ.filter((r) => readStatus(r).ok === r.qs.length).length;
+      let h = '<div class="toolbar"><select id="read-filter" class="day-select">' + opts.replace('value="' + readFilter + '"', 'value="' + readFilter + '" selected') + '</select>' +
+        '<span class="count-badge">만점 ' + perfect + " / " + READ.length + "</span></div>" +
+        '<details class="info-box read-guide"><summary>📖 앱 지문 공부법 (50분)</summary><div class="info-content"><ol>' +
+        "<li><b>⏱ 시간 재고 풀기:</b> 목표 시간 안에 질문을 먼저 읽고 본문에서 근거 찾기</li>" +
+        "<li><b>채점·해설:</b> 틀린 문제는 근거 문장을 본문에서 다시 찾아보기</li>" +
+        "<li><b>해석 확인:</b> 해석과 한 문장씩 맞춰 보며 모르는 단어·문법 메모</li>" +
+        "<li><b>🔊 지문 듣기 + 소리 내어 읽기 2번:</b> 읽는 속도가 빨라지고 청해에도 도움돼요</li></ol>" +
+        Object.keys(RTYPE).map((k) => "<p><b>" + k + "</b> <span lang=\"ja\" class=\"muted\">" + RTYPE[k][0] + "</span> — " + esc(RTYPE[k][1]) + "</p>").join("") +
+        "</div></details>";
+      if (!list.length) h += '<p class="empty-msg">' + (readFilter === "wrong" ? "틀린 문제가 있는 지문이 없어요 🎉" : "지문이 없어요") + "</p>";
+      let lastDay = 0;
+      list.forEach((r) => {
+        if (r.day !== lastDay) { if (lastDay) h += "</div>"; h += '<h3 class="read-day">Day ' + r.day + '</h3><div class="listen-grid">'; lastDay = r.day; }
+        const st = readStatus(r);
+        const cls = st.done ? (st.ng ? " ng" : " ok") : "";
+        h += '<button type="button" class="listen-card' + cls + '" data-read="' + READ.indexOf(r) + '"><span class="lc-no">' + r.type +
+          ' <small class="muted">' + r.qs.length + "문제</small></span><span class=\"lc-sit\" lang=\"ja\">" + esc(plain(r.title)) + '</span><span class="lc-st">' +
+          (st.done ? (st.ng ? "❌ " : "⭕ ") + st.ok + "/" + r.qs.length + " 정답" : "안 풂") + "</span></button>";
+      });
+      if (lastDay) h += "</div>";
+      root.innerHTML = h;
+      return;
+    }
+    const r = READ[readCur];
+    const allDone = readPicks.length === r.qs.length && readPicks.every((x) => x !== undefined && x !== null);
+    let h = '<div class="listen-head"><button type="button" class="ghost-btn small" id="read-back">‹ 목록</button><span class="q-type">' + r.type +
+      '</span><span class="muted">Day ' + r.day + " · 지문 " + r.no + " / " + READ.length + "</span></div>" +
+      '<div class="read-timerbar"><span>⏱ <b id="read-timer">' + fmt(timerMs()) + "</b></span>" +
+      '<button type="button" class="ghost-btn small" id="read-timer-btn"></button><span class="hint">' + esc(RTYPE[r.type][1].split(". ").pop()) + "</span></div>" +
+      '<article class="passage"><h3 lang="ja">' + ruby(r.title) + '</h3><div class="ptext" lang="ja">' + ruby(r.text) + "</div>" +
+      '<div class="passage-act">' + (canSpeak ? '<button type="button" class="ghost-btn small" id="read-say">🔊 지문 듣기</button>' : "") +
+      '<button type="button" class="ghost-btn small" id="read-ko">' + (readShowKo ? "해석 숨기기" : "해석 보기") + "</button></div>" +
+      (readShowKo ? '<div class="pko">' + esc(r.ko).replace(/\n/g, "<br />") + "</div>" : "") + "</article>";
+    r.qs.forEach((q, qi) => {
+      const pick = readPicks[qi];
+      const answered = pick !== undefined && pick !== null;
+      h += '<section class="rq"><div class="rq-q" lang="ja"><b>問' + (qi + 1) + "</b> " + ruby(q.q) + '</div><div class="q-options listen-opts">' +
+        q.ch.map((c, i) => {
+          let cls = "q-opt";
+          if (answered && i === q.a) cls += " correct";
+          else if (answered && i === pick) cls += " wrong";
+          return '<button type="button" class="' + cls + '" data-rpick="' + qi + "." + i + '"' + (answered ? " disabled" : "") + ' lang="ja"><span class="q-n">' + (i + 1) + "</span><span>" + ruby(c) + "</span></button>";
+        }).join("") + "</div>" +
+        (answered ? '<div class="feedback ' + (pick === q.a ? "ok" : "ng") + '"><div class="fb-title">' + (pick === q.a ? "⭕ 정답" : "❌ 오답 — 정답 " + (q.a + 1) + "번") +
+          '</div><div class="fb-body">' + esc(q.exp) + "</div></div>" : "") + "</section>";
+    });
+    if (allDone) {
+      const ok = r.qs.filter((q, i) => readPicks[i] === q.a).length;
+      h += '<div class="result"><div class="result-score">' + ok + " / " + r.qs.length + '</div><div class="result-pct">걸린 시간 ' + fmt(timerMs()) + "</div>" +
+        '<p class="hint">해석 보기 → 🔊 지문 듣기 → 소리 내어 2번 읽기까지 하면 이 지문 끝!</p></div>' +
+        '<div class="result-actions">' + (readCur > 0 ? '<button type="button" class="ghost-btn" data-read="' + (readCur - 1) + '">‹ 이전 지문</button>' : "") +
+        '<button type="button" class="ghost-btn" data-read="' + readCur + '">다시 풀기</button>' +
+        (readCur < READ.length - 1 ? '<button type="button" class="primary-btn" data-read="' + (readCur + 1) + '">다음 지문 ›</button>' : "") + "</div>";
+    }
+    root.innerHTML = h;
+    timerBtn();
+  }
+  function leaveRead() { timerReset(); stopSpeech(); }
+  $("view-read").addEventListener("click", (e) => {
+    const card = e.target.closest("[data-read]");
+    if (card) {
+      leaveRead();
+      readCur = Number(card.dataset.read);
+      readPicks = [];
+      readShowKo = false;
+      renderRead();
+      window.scrollTo(0, 0);
+      timerStart();
+      return;
+    }
+    const id = e.target.id;
+    if (id === "read-back") { leaveRead(); readCur = null; renderRead(); return; }
+    if (id === "read-timer-btn") { if (timer.run) timerStop(); else timerStart(); return; }
+    if (id === "read-ko") { readShowKo = !readShowKo; renderRead(); return; }
+    if (id === "read-say") {
+      const r = READ[readCur];
+      speakSequence([plain(r.title)].concat(plain(r.text).split("\n")).filter((t) => t.trim()).map((t) => ({ text: t, role: "N" })));
+      return;
+    }
+    const pk = e.target.closest("[data-rpick]");
+    if (pk) {
+      const [qi, ci] = pk.dataset.rpick.split(".").map(Number);
+      if (readPicks[qi] !== undefined && readPicks[qi] !== null) return;
+      const r = READ[readCur];
+      readPicks[qi] = ci;
+      listened[r.id + "." + qi] = ci === r.qs[qi].a ? 1 : 2;
+      saveListen();
+      if (r.qs.every((q, i) => readPicks[i] !== undefined && readPicks[i] !== null)) timerStop();
+      const y = window.scrollY;
+      renderRead();
+      window.scrollTo(0, y);
+    }
+  });
+  $("view-read").addEventListener("change", (e) => {
+    if (e.target.id === "read-filter") { readFilter = e.target.value; renderRead(); }
   });
 
   // ---------- 가나 표 ----------
@@ -1338,7 +1573,8 @@
     else if (v === "vocab") renderVocab();
     else if (v === "grammar") renderGrammar();
     else if (v === "wrong") renderWrong();
-    else if (v === "listen" && !listenCur) renderListen();
+    else if (v === "listen" && listenCur === null) renderListen();
+    else if (v === "read" && readCur === null) renderRead();
   }
 
   // ---------- 시작 ----------
